@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=1" name="viewport" />
+    <script>
+        var Module = {};
+        var __cargo_web = {};
+        Object.defineProperty( Module, 'canvas', {
+            get: function() {
+                if( __cargo_web.canvas ) {
+                    return __cargo_web.canvas;
+                }
+
+                var canvas = document.createElement( 'canvas' );
+                document.querySelector( 'body' ).appendChild( canvas );
+                __cargo_web.canvas = canvas;
+
+                return canvas;
+            }
+        });
+    </script>
+    <style type="text/css">
+		html {
+			font-size: 120%;
+		}
+
+		body {
+            margin: 0;
+            padding: 0;
+			background: rgb(0,255,149);
+			background: linear-gradient(90deg, rgba(0,255,149,1) 0%, rgba(0,181,255,1) 100%);
+		}
+
+		main {
+			width: 30vw;
+			margin: 3rem 33vw 3rem 33vw;
+			background-color: white;
+			border-radius: 5px;
+			padding: 2vw;
+		}
+
+		.input_container {
+			display: flex;
+			flex-direction: column-reverse;
+		}
+
+		/* input style */
+		input {
+			border-radius: 0;
+			height: 2rem;
+			border: none;
+			border-bottom: 3px solid grey;
+			border-image: linear-gradient(90deg, rgba(0,255,149,1) 0%, rgba(0,181,255,1) 100%);
+			border-image-slice: 1;
+			font-size: 1.2rem;
+			outline: none;
+		}
+		input::placeholder {
+			color: transparent;
+		}
+		input:focus {
+			border-image: linear-gradient(90deg, rgba(106,0,255,1) 0%, rgba(255,0,236,1) 100%);
+  			border-image-slice: 1;
+		}
+		input:not(:placeholder-shown) {
+			border-image: linear-gradient(90deg, rgba(106,0,255,1) 0%, rgba(255,0,236,1) 100%);
+			border-image-slice: 1;
+		}
+
+		/* label style */
+		label {
+			color: grey;
+			font-size: .9rem;
+			position: relative;
+			top: 1.7rem;
+			transition: .3s;
+		}
+		input:focus ~ label {
+			position: relative;
+			top: .1rem;
+			color: black;
+		}
+		input:not(:placeholder-shown) ~ label {
+			top: .1rem;
+		}
+
+		/* button style */
+		button {
+			all: unset;
+			width: 90%;
+			background-image: linear-gradient(90deg, rgba(0,255,149,1) 0%, rgba(0,181,255,1) 100%);
+			padding: .5rem 5% .5rem 5%;
+			border-radius: 5px;
+		}
+		button:hover {
+			color: white;
+			background-image: linear-gradient(90deg, rgba(106,0,255,1) 0%, rgba(255,0,236,1) 100%);
+        }
+
+		#sorry>button {
+			background-color: red;
+			background-image: none;
+			color: white;
+		}
+		
+        #sorry {
+            background-color: #ffafaf;
+            border: 1px solid red;
+        }
+
+        @media all and (max-width: 1200px) {
+            main {
+                width: 92vw;
+                margin: 2rem 2vw 2rem 2vw;
+                padding: 2vw;
+            }
+        }
+	</style>
+</head>
+<body>
+    <script src="password_manager.js"></script>
+</body>
+</html>
