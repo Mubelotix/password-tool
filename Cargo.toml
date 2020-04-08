@@ -11,7 +11,7 @@ yew = "0.12.0"
 sha3 = "0.8.2"
 hex = "0.4.2"
 stdweb = "0.4.20"
-version = "3.0.0"
+string-tools = "0.1.0"
 
 [profile.release]
 lto = true

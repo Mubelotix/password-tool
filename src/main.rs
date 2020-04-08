@@ -6,19 +6,27 @@ use hex;
 use stdweb::{js, web::document, web::html_element::InputElement, unstable::TryFrom};
 use yew::services::storage::{StorageService, Area};
 use yew::services::dialog::DialogService;
+use string_tools::{get_all_after, get_all_before};
 
-pub fn get_all_after<'a>(text: &'a str, end: &str) -> &'a str {
-    if let Some(mut end_index) = text.find(end) {
-        end_index += end.len();
-        return &text[end_index..];
-    } else {
-        return "";
+
+#[cfg(test)]
+mod test {
+    use super::generate_password;
+    use super::extract_domain_name;
+
+    #[test]
+    fn test_password_did_not_changed() {
+        assert_eq!(generate_password("testing", "example.com", true, false, true), "2d70dac574dbfa9aa025c3750657e70773d6b2a9b00f@*_BQF");
     }
-}
 
-pub fn get_all_before<'a>(text: &'a str, begin: &str) -> &'a str {
-    let begin = text.find(begin).unwrap_or(text.len());
-    &text[..begin]
+    #[test]
+    fn url() {
+        assert_eq!(&extract_domain_name("https://google.com").unwrap(), "google.com");
+        assert_eq!(&extract_domain_name("google.com").unwrap(), "google.com");
+        assert_eq!(&extract_domain_name("https://google.com/test").unwrap(), "google.com");
+        assert_eq!(&extract_domain_name("http://mubelotix.dev/passwords").unwrap(), "mubelotix.dev");
+        assert_eq!(&extract_domain_name("https://test.mubelotix.dev/index.html").unwrap(), "mubelotix.dev");
+    }
 }
 
 fn extract_domain_name(mut url: &str) -> Option<String> {
@@ -52,7 +60,7 @@ fn generate_password(master_password: &str, domain: &str, big: bool, only_number
     let password_size = if big {
         50
     } else {
-        16
+        15
     };
     
     let mut hasher = Sha3_512::new();
@@ -189,9 +197,9 @@ impl Component for Model {
                         </div>
                         <br />
                         <br />
-                        <button onclick=self.link.callback(|_| Msg::SecondaryButton)>{ "Generate a password" }</button><br />
+                        <button onclick=self.link.callback(|_| Msg::Next)>{ "Next" }</button><br />
                         <br />
-                        <button onclick=self.link.callback(|_| Msg::Next)>{ "Next" }</button>
+                        <button onclick=self.link.callback(|_| Msg::SecondaryButton)>{ "Generate a password" }</button>
                     </main>
                 }
             },
@@ -206,9 +214,9 @@ impl Component for Model {
                         </div>
                         <br />
                         <br />
-                        <button onclick=self.link.callback(|_| Msg::SecondaryButton)>{ "Back" }</button><br />
+                        <button onclick=self.link.callback(|_| Msg::Next)>{ "Next" }</button><br />
                         <br />
-                        <button onclick=self.link.callback(|_| Msg::Next)>{ "Next" }</button>
+                        <button onclick=self.link.callback(|_| Msg::SecondaryButton)>{ "Back" }</button>
                     </main>
                 }
             },
@@ -221,9 +229,9 @@ impl Component for Model {
                         <br/>
                         {"In case where your password is rejected because of requirements, please try the button below."}<br/>
                         <br/>
-                        <button onclick=self.link.callback(|_| Msg::SecondaryButton)>{ "Back" }</button><br />
+                        <button onclick=self.link.callback(|_| Msg::Next)>{ "Help" }</button><br />
                         <br />
-                        <button onclick=self.link.callback(|_| Msg::Next)>{ "Help" }</button>
+                        <button onclick=self.link.callback(|_| Msg::SecondaryButton)>{ "Back" }</button>
                     </main>
                 }
             },
@@ -251,48 +259,3 @@ fn main() {
     yew::run_loop();
 }
 
-#[cfg(test)]
-mod test {
-    use super::generate_password;
-    use super::extract_domain_name;
-
-    #[test]
-    fn test_password_did_not_changed() {
-        assert_eq!(generate_password("testing", "example.com", true, false, true), "2d70dac574dbfa9aa025c3750657e70773d6b2a9b00f@*_BQF");
-    }
-
-    #[test]
-    fn url() {
-        assert_eq!(&extract_domain_name("https://google.com").unwrap(), "google.com");
-        assert_eq!(&extract_domain_name("google.com").unwrap(), "google.com");
-        assert_eq!(&extract_domain_name("https://google.com/test").unwrap(), "google.com");
-        assert_eq!(&extract_domain_name("http://mubelotix.dev/passwords").unwrap(), "mubelotix.dev");
-        assert_eq!(&extract_domain_name("https://test.mubelotix.dev/index.html").unwrap(), "mubelotix.dev");
-    }
-
-    #[test]
-    fn gen_pass() {
-        use std::fs;
-
-        let words = fs::read_to_string("dic.txt").unwrap();
-        let words: Vec<&str> = words.split('\n').filter(|word| word.len() > 3).collect();
-
-        use rand::{thread_rng, Rng};
-
-        let mut password = String::new();
-
-        for i in 0..20 {
-            let mut rng = thread_rng();
-            let n: usize = rng.gen_range(0, words.len());
-            let word = words[n];
-            let mut chars = words[n].chars();
-            password.push(chars.next().unwrap());
-            password.push(chars.next().unwrap());
-            password.push(chars.next().unwrap());
-
-            println!("{}", word);
-        }
-        
-        println!("{}", password);
-    }
-}
