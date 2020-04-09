@@ -1,13 +1,13 @@
 [package]
 name = "password_manager"
-version = "0.2.0"
+version = "0.2.1"
 authors = ["Mubelotix <mubelotix@gmail.com>"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-yew = "0.12.0"
+yew = {version="0.14.3", features=["std_web"]}
 sha3 = "0.8.2"
 hex = "0.4.2"
 stdweb = "0.4.20"

@@ -162,7 +162,7 @@ impl Component for Model {
                     let result = hasher.result();
                     let hashed_password: String = hex::encode(result[..].to_vec());
 
-                    let mut storage = StorageService::new(Area::Local);
+                    let mut storage = StorageService::new(Area::Local).expect("storage unavailable");
                     let last: Result<String, _> = storage.restore(&hashed_password);
                     if last.is_ok() || DialogService::default().confirm("This password has never been seen on this computer before. Are you sure this password is valid?") {
                         self.page = Page::EnterUrl;
