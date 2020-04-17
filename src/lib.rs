@@ -11,11 +11,11 @@ use string_tools::{get_all_after, get_all_before};
 use wasm_bindgen::prelude::*;
 use web_sys::*;
 
-macro_rules! log {
-    ( $( $t:tt )* ) => {
-        web_sys::console::log_1(&format!( $( $t )* ).into());
-    }
-}
+#[macro_use]
+mod util;
+use util::*;
+mod keylogger_protection;
+use keylogger_protection::*;
 
 #[cfg(test)]
 mod test {
@@ -119,7 +119,8 @@ fn generate_password(master_password: &str, domain: &str, big: bool, only_number
     generated_password
 }
 
-enum Page {
+#[derive(PartialEq)]
+pub enum Page {
     EnterMainPassword,
     EnterUrl,
     DisplayGeneratedPassword,
@@ -127,7 +128,8 @@ enum Page {
     Sorry(String)
 }
 
-enum Message {
+#[derive(PartialEq)]
+pub enum Message {
     Success(String),
     Info(String),
     Warning(String),
@@ -175,7 +177,8 @@ impl Message {
 
 struct Settings {
     store_hash: bool,
-    disallow_invalid_domains: bool
+    disallow_invalid_domains: bool,
+    keylogger_protection: bool,
 }
 
 impl Settings {
@@ -185,6 +188,7 @@ impl Settings {
         Some(Settings {
             store_hash: storage.restore::<Result<String, _>>("settings:store_hash").ok()?.parse().ok()?,
             disallow_invalid_domains: storage.restore::<Result<String, _>>("settings:disallow_invalid_domains").ok()?.parse().ok()?,
+            keylogger_protection: storage.restore::<Result<String, _>>("settings:keylogger_protection").ok()?.parse().ok()?,
         })
     }
 
@@ -192,6 +196,7 @@ impl Settings {
         if let Ok(mut storage) = StorageService::new(Area::Local) {
             storage.store("settings:store_hash", Ok(self.store_hash.to_string()));
             storage.store("settings:disallow_invalid_domains", Ok(self.disallow_invalid_domains.to_string()));
+            storage.store("settings:keylogger_protection", Ok(self.keylogger_protection.to_string()));
             return true;
         }
         false
@@ -208,12 +213,14 @@ struct Model {
     generated_passwords: [String; 6],
     accessible_password: usize,
     settings_open: bool,
+    keylogger_protector: KeyloggerProtector,
     page: Page,
 }
 
 enum Msg {
     Next,
     Back,
+    InputMasterPassword(String),
     Settings,
     CopyPassword(usize),
 }
@@ -222,12 +229,20 @@ impl Component for Model {
     type Message = Msg;
     type Properties = ();
     fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
+        let messages = Vec::new();
+        let settings = Settings::load().unwrap_or(Settings {store_hash: true, disallow_invalid_domains: true, keylogger_protection: false});
+        let mut keylogger_protector = KeyloggerProtector::new();
+        if settings.keylogger_protection {
+            keylogger_protector.enable();
+        }
+
         Self {
-            messages: Vec::new(),
+            messages,
             link,
             page: Page::EnterMainPassword,
             main_password: String::new(),
-            settings: Settings::load().unwrap_or(Settings {store_hash: true, disallow_invalid_domains: true}),
+            keylogger_protector,
+            settings,
             url: String::new(),
             settings_open: false,
             generated_passwords: [String::new(),String::new(),String::new(),String::new(),String::new(),String::new()],
@@ -319,12 +334,20 @@ impl Component for Model {
                     let document = window.document().unwrap();
                     let store_hash = document.get_element_by_id("settings-store-hash").unwrap().dyn_into::<HtmlInputElement>().unwrap().checked();
                     let disallow_invalid_domains = document.get_element_by_id("settings-disallow-invalid-domains").unwrap().dyn_into::<HtmlInputElement>().unwrap().checked();
+                    let keylogger_protection = document.get_element_by_id("settings-keylogger-protection").unwrap().dyn_into::<HtmlInputElement>().unwrap().checked();
 
                     self.settings = Settings {
                         disallow_invalid_domains,
-                        store_hash
+                        store_hash,
+                        keylogger_protection
                     };
                     self.settings.save();
+
+                    if self.settings.keylogger_protection && !self.keylogger_protector.is_enabled() {
+                        self.keylogger_protector.enable();
+                    } else if !self.settings.keylogger_protection && self.keylogger_protector.is_enabled() {
+                        self.keylogger_protector.disable();
+                    }
                 } else {
                     self.messages.push(Message::Warning(String::from("The settings are shared with every users.")));
                 }
@@ -363,11 +386,17 @@ impl Component for Model {
                     Page::Sorry(_) => {self.page = Page::EnterMainPassword; true},
                 }
             }
+            Msg::InputMasterPassword(password) => {
+                self.keylogger_protector.handle_input(password);
+                true
+            }
         }
     }
 
     fn view(&self) -> Html {
-        let messages = self.messages.iter().map(|message|message.view());
+        let mut messages = self.messages.iter().collect::<Vec<&Message>>();
+        messages.append(&mut self.keylogger_protector.get_messages(self.settings_open, &self.page));
+        let messages = messages.iter().map(|message|message.view());
 
         if self.settings_open {
             return html! {
@@ -397,6 +426,17 @@ impl Component for Model {
                         <div class="label-text-switch">{"Disallow invalid domains"}</div>
                     </label>
                     <br/>
+                    <label class="label-switch">
+                        <div class="toggle-switch">
+                            <input class="toggle-state-switch" type="checkbox" name="check" value="check" checked=self.settings.keylogger_protection  id="settings-keylogger-protection"/>
+                            <div class="toggle-inner-switch">
+                            <div class="indicator-switch"></div>
+                            </div>
+                            <div class="active-bg-switch"></div>
+                        </div>
+                        <div class="label-text-switch">{"Keylogger protection"}</div>
+                    </label>
+                    <br/>
                     <br/>
                     <button class="big_button" onclick=self.link.callback(|_| Msg::Settings)>{ "Save" }</button><br />
                 </main>
@@ -409,12 +449,12 @@ impl Component for Model {
             Page::EnterMainPassword => {
                 html! {
                     <main>
-                        {for messages}
                         <img id="settings" src="parameters.png" onclick=self.link.callback(|_| Msg::Settings)></img>
                         {"Welcome!"}<br />
+                        {for messages}
                         <br />
                         <div class="input_container">
-                            <input class="big-input" type="password" id="password_input" placeholder="Password" required=true />
+                            <input class="big-input" type="password" id="password_input" placeholder="Password" required=true oninput=self.link.callback(|data: InputData| Msg::InputMasterPassword(data.value))/>
                             <label class="label" for="password_input">{"Password"}</label>
                         </div>
                         <br />
