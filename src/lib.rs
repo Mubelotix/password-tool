@@ -250,7 +250,7 @@ impl Component for Model {
                         let result = hasher.result();
                         let hashed_password: String = hex::encode(result[..].to_vec());
     
-                        let mut storage = StorageService::new(Area::Local).expect("storage unavailable");
+                        let storage = StorageService::new(Area::Local).expect("storage unavailable");
                         let last: Result<String, _> = storage.restore(&hashed_password);
 
                         if last.is_err() && self.settings.store_hash {
@@ -284,6 +284,15 @@ impl Component for Model {
                         } else {
                             self.messages.push(Message::Warning(String::from("The URL is not valid.")));
                             self.domain = String::from("unknown.unknown");
+                        }
+
+                        if self.settings.store_hash {
+                            let mut storage = StorageService::new(Area::Local).expect("storage unavailable");
+                            let mut hasher = Sha3_512::new();
+                            hasher.input(format!("{}password", self.main_password));
+                            let result = hasher.result();
+                            let hashed_password: String = hex::encode(result[..].to_vec());
+                            storage.store(&hashed_password, Ok(String::new()));
                         }
     
                         self.generated_passwords[0] = generate_password(&self.main_password, &self.domain, true, false, true);
