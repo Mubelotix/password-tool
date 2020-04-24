@@ -6,7 +6,6 @@ use sha3::{Digest, Sha3_512};
 use hex;
 use stdweb::{js, web::document, web::html_element::InputElement, unstable::TryFrom};
 use yew::services::storage::{StorageService, Area};
-use yew::services::dialog::DialogService;
 use string_tools::{get_all_after, get_all_before};
 use wasm_bindgen::prelude::*;
 use web_sys::*;
@@ -16,6 +15,8 @@ mod util;
 use util::*;
 mod keylogger_protection;
 use keylogger_protection::*;
+mod checkbox;
+use checkbox::*;
 
 #[cfg(test)]
 mod test {
@@ -121,7 +122,8 @@ fn generate_password(master_password: &str, domain: &str, big: bool, only_number
 
 #[derive(PartialEq)]
 pub enum Page {
-    EnterMainPassword,
+    GenerateMasterPassword(bool, bool, bool),
+    EnterMasterPassword,
     EnterUrl,
     DisplayGeneratedPassword,
     MorePasswords,
@@ -207,14 +209,27 @@ struct Model {
     messages: Vec<Message>,
     link: ComponentLink<Self>,
     settings: Settings,
-    main_password: String,
+    master_password: String,
     url: String,
     domain: String,
+    generated_master_password: String,
     generated_passwords: [String; 6],
     accessible_password: usize,
     settings_open: bool,
     keylogger_protector: KeyloggerProtector,
     page: Page,
+}
+
+#[derive(Clone, Debug)]
+enum CheckboxId {
+    SpecialChars,
+    Undefined
+}
+
+impl Default for CheckboxId {
+    fn default() -> CheckboxId {
+        CheckboxId::Undefined
+    }
 }
 
 enum Msg {
@@ -223,6 +238,7 @@ enum Msg {
     InputMasterPassword(String),
     Settings,
     CopyPassword(usize),
+    CheckBoxChange((bool, CheckboxId)),
 }
 
 impl Component for Model {
@@ -239,8 +255,9 @@ impl Component for Model {
         Self {
             messages,
             link,
-            page: Page::EnterMainPassword,
-            main_password: String::new(),
+            generated_master_password: String::new(),
+            page: Page::EnterMasterPassword,
+            master_password: String::new(),
             keylogger_protector,
             settings,
             url: String::new(),
@@ -256,12 +273,12 @@ impl Component for Model {
             Msg::Next => {
                 self.messages = Vec::new();
                 match self.page {
-                    Page::EnterMainPassword => {
+                    Page::EnterMasterPassword => {
                         // Provisory: because of bad wasm support on mobile
-                        self.main_password = InputElement::try_from(document().get_element_by_id("password_input").unwrap()).unwrap().raw_value();
+                        self.master_password = InputElement::try_from(document().get_element_by_id("password_input").unwrap()).unwrap().raw_value();
                         
                         let mut hasher = Sha3_512::new();
-                        hasher.input(format!("{}password", self.main_password));
+                        hasher.input(format!("{}password", self.master_password));
                         let result = hasher.result();
                         let hashed_password: String = hex::encode(result[..].to_vec());
     
@@ -304,18 +321,18 @@ impl Component for Model {
                         if self.settings.store_hash {
                             let mut storage = StorageService::new(Area::Local).expect("storage unavailable");
                             let mut hasher = Sha3_512::new();
-                            hasher.input(format!("{}password", self.main_password));
+                            hasher.input(format!("{}password", self.master_password));
                             let result = hasher.result();
                             let hashed_password: String = hex::encode(result[..].to_vec());
                             storage.store(&hashed_password, Ok(String::new()));
                         }
     
-                        self.generated_passwords[0] = generate_password(&self.main_password, &self.domain, true, false, true);
-                        self.generated_passwords[1] = generate_password(&self.main_password, &self.domain, true, false, false);
-                        self.generated_passwords[2] = generate_password(&self.main_password, &self.domain, true, true, true);
-                        self.generated_passwords[3] = generate_password(&self.main_password, &self.domain, false, false, true);
-                        self.generated_passwords[4] = generate_password(&self.main_password, &self.domain, false, false, false);
-                        self.generated_passwords[5] = generate_password(&self.main_password, &self.domain, false, true, true);
+                        self.generated_passwords[0] = generate_password(&self.master_password, &self.domain, true, false, true);
+                        self.generated_passwords[1] = generate_password(&self.master_password, &self.domain, true, false, false);
+                        self.generated_passwords[2] = generate_password(&self.master_password, &self.domain, true, true, true);
+                        self.generated_passwords[3] = generate_password(&self.master_password, &self.domain, false, false, true);
+                        self.generated_passwords[4] = generate_password(&self.master_password, &self.domain, false, false, false);
+                        self.generated_passwords[5] = generate_password(&self.master_password, &self.domain, false, true, true);
                         
                         self.page = Page::DisplayGeneratedPassword;
                         self.accessible_password = 0;
@@ -324,6 +341,10 @@ impl Component for Model {
                     Page::Sorry(_) => false,
                     Page::MorePasswords => {
                         {self.page = Page::Sorry("There is no page here!".to_string()); true}
+                    }
+                    Page::GenerateMasterPassword(_, _, _) => {
+                        self.page = Page::EnterMasterPassword;
+                        true
                     }
                 }
             },
@@ -379,16 +400,40 @@ impl Component for Model {
             Msg::Back => {
                 self.messages = Vec::new();
                 match self.page {
-                    Page::EnterMainPassword => {self.page = Page::Sorry(String::from("Unimplemented password generation")); true},
-                    Page::EnterUrl => {self.page = Page::EnterMainPassword; true},
+                    Page::EnterMasterPassword => {self.page = Page::GenerateMasterPassword(false, true, false); true},
+                    Page::EnterUrl => {self.page = Page::EnterMasterPassword; true},
                     Page::DisplayGeneratedPassword => {self.page = Page::EnterUrl; true},
                     Page::MorePasswords => {self.page = Page::DisplayGeneratedPassword; true},
-                    Page::Sorry(_) => {self.page = Page::EnterMainPassword; true},
+                    Page::GenerateMasterPassword(_, _, _) => {self.page = Page::Sorry(String::from("You were where you cannot be.")); true},
+                    Page::Sorry(_) => {self.page = Page::EnterMasterPassword; true},
                 }
             }
             Msg::InputMasterPassword(password) => {
                 self.keylogger_protector.handle_input(password);
                 true
+            }
+            Msg::CheckBoxChange((checked, id)) => {
+                if let Page::GenerateMasterPassword(emojis, strange_chars, very_strange_chars) = &mut self.page {
+                    match id {
+                        CheckboxId::SpecialChars => *strange_chars = checked,
+                        CheckboxId::Undefined => log!("BUG: Undefined checkbox"),
+                    }
+                    let mut master_password = String::new();
+                    while master_password.len() < 14 { // only bytes char so its ok
+                        let number = get_random_between(32, 127);
+                        if !*strange_chars && ((number >= 123 && number <= 126)
+                        || (number >= 91 && number <= 96) || (number >= 58 && number <= 64) ||
+                        (number >= 32 && number <= 47)) {
+                            continue
+                        }
+                        master_password.push(number as char);
+                    }
+                    self.generated_master_password = master_password;
+                    true
+                } else {
+                    log!("BUG: Checkbox event where it is not possible");
+                    false
+                }
             }
         }
     }
@@ -446,7 +491,26 @@ impl Component for Model {
         // TODO <a target="_blank" href="https://icones8.fr/icons/set/settings">Paramètres icon</a> icon by <a target="_blank" href="https://icones8.fr">Icons8</a>
 
         match &self.page {
-            Page::EnterMainPassword => {
+            Page::GenerateMasterPassword(emoji, special_chars, very_special_chars) => {
+                html! {
+                    <main>
+                        <img id="settings" src="parameters.png" onclick=self.link.callback(|_| Msg::Settings)></img>
+                        {"You don't have a master password yet? Generate one!"}<br />
+                        {for messages}
+                        <br />
+                        <Checkbox<CheckboxId> label="Use special chars (recommended)" id=CheckboxId::SpecialChars checked=true onchange=self.link.callback(|v| Msg::CheckBoxChange(v))/>
+                        <br />
+                        {&self.generated_master_password}
+                        <br />
+                        {
+                            "This feature is not ready to be used yet."
+                        }
+                        <br />
+                        <button class="big_button" onclick=self.link.callback(|_| Msg::Next)>{ "Next" }</button><br />
+                    </main>
+                }
+            }
+            Page::EnterMasterPassword => {
                 html! {
                     <main>
                         <img id="settings" src="parameters.png" onclick=self.link.callback(|_| Msg::Settings)></img>
