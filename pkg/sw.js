@@ -8,6 +8,7 @@ self.addEventListener('install', function(event) {
                 '/password_tool_bg.wasm',
                 '/password_tool.js',
                 '/parameters.png',
+                '/manifest.webmanifest',
             ]);
         })
     );
