@@ -1,10 +1,8 @@
 #![recursion_limit="512"]
 use wasm_bindgen::JsCast;
-use stdweb::web::INonElementParentNode;
 use yew::prelude::*;
 use sha3::{Digest, Sha3_512};
 use hex;
-use stdweb::{js, web::document, web::html_element::InputElement, unstable::TryFrom};
 use yew::services::storage::{StorageService, Area};
 use string_tools::{get_all_after, get_all_before};
 use wasm_bindgen::prelude::*;
@@ -275,7 +273,7 @@ impl Component for Model {
                 match self.page {
                     Page::EnterMasterPassword => {
                         // Provisory: because of bad wasm support on mobile
-                        self.master_password = InputElement::try_from(document().get_element_by_id("password_input").unwrap()).unwrap().raw_value();
+                        self.master_password = window().unwrap().document().unwrap().get_element_by_id("password_input").unwrap().dyn_into::<HtmlInputElement>().unwrap().value();
                         
                         let mut hasher = Sha3_512::new();
                         hasher.input(format!("{}password", self.master_password));
@@ -305,7 +303,7 @@ impl Component for Model {
                         }*/
                     },
                     Page::EnterUrl => {
-                        self.url = InputElement::try_from(document().get_element_by_id("url_input").unwrap()).unwrap().raw_value();
+                        self.url = window().unwrap().document().unwrap().get_element_by_id("url_input").unwrap().dyn_into::<HtmlInputElement>().unwrap().value();
 
                         if let Some(domain) = extract_domain_name(&self.url) {
                             self.messages.push(Message::Success(format!("The password for the domain {} has been generated successfully.", domain)));
@@ -377,23 +375,24 @@ impl Component for Model {
             }
             Msg::CopyPassword(idx) => {
                 if idx <= self.accessible_password {
-                    js! { @(no_return)
-                        var el = document.createElement("textarea");
-                        el.value = @{&self.generated_passwords[idx]};
-                        el.setAttribute("readonly", "");
-                        el.style = {position: "absolute", left: "-9999px"};
-                        document.body.appendChild(el);
-                        el.select();
-                        document.execCommand("copy");
-                        document.body.removeChild(el);
-                    }
+                    let document = window().unwrap().document().unwrap();
+                    let element = document.create_element("textarea").unwrap();
+                    element.set_attribute("readonly", "").unwrap();
+                    element.set_attribute("style", "position: absolute; left: -9999px").unwrap();
+                    
+                    let element: HtmlTextAreaElement = element.dyn_into().unwrap();
+                    let document: HtmlDocument = document.dyn_into().unwrap();
+                    let body = document.body().unwrap();
+                    element.set_value(&self.generated_passwords[idx]);
+                    body.append_child(&element).unwrap();
+                    element.select();
+                    document.exec_command("copy").unwrap();
+                    body.remove_child(&element).unwrap();
                     if self.accessible_password == idx {
                         self.accessible_password += 1;
                     }
                 } else {
-                    js! { @(no_return)
-                        alert("Error: this password can't be copied now");
-                    }
+                    panic!("Error: this password can't be copied now");
                 }
                 true
             },
