@@ -13,8 +13,6 @@ mod util;
 use util::*;
 mod keylogger_protection;
 use keylogger_protection::*;
-mod checkbox;
-use checkbox::*;
 
 #[cfg(test)]
 mod test {
@@ -235,7 +233,6 @@ enum Msg {
     InputMasterPassword(String),
     Settings,
     CopyPassword(usize),
-    CheckBoxChange((bool, CheckboxId)),
     ChangePanels(bool, bool),
 }
 
@@ -404,9 +401,6 @@ impl Component for Model {
             }
             Msg::InputMasterPassword(password) => {
                 self.keylogger_protector.handle_input(password)
-            }
-            Msg::CheckBoxChange((checked, id)) => {
-                unimplemented!();
             }
             Msg::ChangePanels(how_does_it_work, how_to_get_mp) => {
                 self.page = Page::EnterMasterPassword(how_does_it_work, how_to_get_mp);
