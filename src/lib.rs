@@ -1,4 +1,4 @@
-#![recursion_limit="512"]
+#![recursion_limit="1024"]
 use wasm_bindgen::JsCast;
 use yew::prelude::*;
 use sha3::{Digest, Sha3_512};
@@ -120,8 +120,7 @@ fn generate_password(master_password: &str, domain: &str, big: bool, only_number
 
 #[derive(PartialEq)]
 pub enum Page {
-    GenerateMasterPassword(bool, bool, bool),
-    EnterMasterPassword,
+    EnterMasterPassword(bool, bool),
     EnterUrl,
     DisplayGeneratedPassword,
     MorePasswords,
@@ -237,6 +236,7 @@ enum Msg {
     Settings,
     CopyPassword(usize),
     CheckBoxChange((bool, CheckboxId)),
+    ChangePanels(bool, bool),
 }
 
 impl Component for Model {
@@ -254,7 +254,7 @@ impl Component for Model {
             messages,
             link,
             generated_master_password: String::new(),
-            page: Page::EnterMasterPassword,
+            page: Page::EnterMasterPassword(false, false),
             master_password: String::new(),
             keylogger_protector,
             settings,
@@ -271,7 +271,7 @@ impl Component for Model {
             Msg::Next => {
                 self.messages = Vec::new();
                 match self.page {
-                    Page::EnterMasterPassword => {
+                    Page::EnterMasterPassword(_, _) => {
                         // Provisory: because of bad wasm support on mobile
                         self.master_password = window().unwrap().document().unwrap().get_element_by_id("password_input").unwrap().dyn_into::<HtmlInputElement>().unwrap().value();
                         
@@ -340,10 +340,6 @@ impl Component for Model {
                     Page::MorePasswords => {
                         {self.page = Page::Sorry("There is no page here!".to_string()); true}
                     }
-                    Page::GenerateMasterPassword(_, _, _) => {
-                        self.page = Page::EnterMasterPassword;
-                        true
-                    }
                 }
             },
             Msg::Settings => {
@@ -399,40 +395,22 @@ impl Component for Model {
             Msg::Back => {
                 self.messages = Vec::new();
                 match self.page {
-                    Page::EnterMasterPassword => {self.page = Page::GenerateMasterPassword(false, true, false); true},
-                    Page::EnterUrl => {self.page = Page::EnterMasterPassword; true},
+                    Page::EnterMasterPassword(_, _) => false,
+                    Page::EnterUrl => {self.page = Page::EnterMasterPassword(false, false); true},
                     Page::DisplayGeneratedPassword => {self.page = Page::EnterUrl; true},
                     Page::MorePasswords => {self.page = Page::DisplayGeneratedPassword; true},
-                    Page::GenerateMasterPassword(_, _, _) => {self.page = Page::Sorry(String::from("You were where you cannot be.")); true},
-                    Page::Sorry(_) => {self.page = Page::EnterMasterPassword; true},
+                    Page::Sorry(_) => {self.page = Page::EnterMasterPassword(false, false); true},
                 }
             }
             Msg::InputMasterPassword(password) => {
-                self.keylogger_protector.handle_input(password);
-                true
+                self.keylogger_protector.handle_input(password)
             }
             Msg::CheckBoxChange((checked, id)) => {
-                if let Page::GenerateMasterPassword(emojis, strange_chars, very_strange_chars) = &mut self.page {
-                    match id {
-                        CheckboxId::SpecialChars => *strange_chars = checked,
-                        CheckboxId::Undefined => log!("BUG: Undefined checkbox"),
-                    }
-                    let mut master_password = String::new();
-                    while master_password.len() < 14 { // only bytes char so its ok
-                        let number = get_random_between(32, 127);
-                        if !*strange_chars && ((number >= 123 && number <= 126)
-                        || (number >= 91 && number <= 96) || (number >= 58 && number <= 64) ||
-                        (number >= 32 && number <= 47)) {
-                            continue
-                        }
-                        master_password.push(number as char);
-                    }
-                    self.generated_master_password = master_password;
-                    true
-                } else {
-                    log!("BUG: Checkbox event where it is not possible");
-                    false
-                }
+                unimplemented!();
+            }
+            Msg::ChangePanels(how_does_it_work, how_to_get_mp) => {
+                self.page = Page::EnterMasterPassword(how_does_it_work, how_to_get_mp);
+                true
             }
         }
     }
@@ -472,26 +450,9 @@ impl Component for Model {
         // TODO <a target="_blank" href="https://icones8.fr/icons/set/settings">Paramètres icon</a> icon by <a target="_blank" href="https://icones8.fr">Icons8</a>
 
         match &self.page {
-            Page::GenerateMasterPassword(emoji, special_chars, very_special_chars) => {
-                html! {
-                    <main>
-                        <img id="settings" src="parameters.png" onclick=self.link.callback(|_| Msg::Settings)></img>
-                        {"You don't have a master password yet? Generate one!"}<br />
-                        {for messages}
-                        <br />
-                        <Checkbox<CheckboxId> label="Use special chars (recommended)" id=CheckboxId::SpecialChars checked=true onchange=self.link.callback(|v| Msg::CheckBoxChange(v))/>
-                        <br />
-                        {&self.generated_master_password}
-                        <br />
-                        {
-                            "This feature is not ready to be used yet."
-                        }
-                        <br />
-                        <button class="big_button" onclick=self.link.callback(|_| Msg::Next)>{ "Next" }</button><br />
-                    </main>
-                }
-            }
-            Page::EnterMasterPassword => {
+            Page::EnterMasterPassword(how_does_it_work, how_to_get_mp) => {
+                let how_does_it_work: bool = *how_does_it_work;
+                let how_to_get_mp: bool = *how_to_get_mp;
                 html! {
                     <main>
                         <img id="settings" src="parameters.png" onclick=self.link.callback(|_| Msg::Settings)></img>
@@ -506,7 +467,58 @@ impl Component for Model {
                         <br />
                         <button class="big_button" onclick=self.link.callback(|_| Msg::Next)>{ "Next" }</button><br />
                         <br />
-                        <button class="big_button" onclick=self.link.callback(|_| Msg::Back)>{ "Generate a password" }</button>
+                        {
+                            if how_does_it_work {
+                                html! {
+                                    <>
+                                    <br />
+                                    <h3 class="faq_question" onclick=self.link.callback(move |_| Msg::ChangePanels(false, how_to_get_mp))>{"How does it work? [reduce]"}</h3>
+                                    <p>
+                                        {"In opposition to any other password manager, this one will never store your passwords. Your passwords will be regenerated each time you need them. The generated passwords will never change, wherever and whenever you are. That means that you can get all your passwords on different devices without needing to synchronize or exchange any data. All your passwords will be generated from your master password to make them unique. They will also be different for every website. Thanks to a complex password generation, it is not possible to get your master password from a generated password. That means that if a website is compromised, and a generated password is stolen, the hacker will never be able to get your master password. Thanks to this design, this is the most secure password manager software in the world, as long as your master password remains strong and secret. "}
+                                    </p>
+                                    </>
+                                }
+                            } else {
+                                html! {
+                                    <><br />
+                                    <h3 class="faq_question" onclick=self.link.callback(move |_| Msg::ChangePanels(true, how_to_get_mp.clone()))>{"How does it work? [expand]"}</h3>
+                                    </>
+                                }
+                            }
+                        }
+                        {
+                            if how_to_get_mp {
+                                let mut master_password = String::new();
+                                while master_password.len() < 14 { // only bytes char so its ok
+                                    let number = get_random_between(32, 127);
+                                    if ((number >= 123 && number <= 126)
+                                    || (number >= 91 && number <= 96) || (number >= 58 && number <= 64) ||
+                                    (number >= 32 && number <= 47)) {
+                                        continue
+                                    }
+                                    master_password.push(number as char);
+                                }
+
+                                html! {
+                                    <>
+                                    <br />
+                                    <h3 class="faq_question" onclick=self.link.callback(move |_| Msg::ChangePanels(how_does_it_work.clone(), false))>{"How can I get a master password? [reduce]"}</h3>
+                                    <p>
+                                        {"Your master password will be the root of every generated password. It must be very strong because cracking your master password means cracking every generated password. It should be random."}
+                                    </p>
+                                    {
+                                        format!("Here is a master password generated just for you! {}", master_password)
+                                    }
+                                    </>
+                                }
+                            } else {
+                                html! {
+                                    <><br />
+                                    <h3 class="faq_question" onclick=self.link.callback(move |_| Msg::ChangePanels(how_does_it_work.clone(), true))>{"How can I get a master password? [expand]"}</h3>
+                                    </>
+                                }
+                            }
+                        }
                     </main>
                 }
             },

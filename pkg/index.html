@@ -20,6 +20,7 @@
 			--enabled-color: #b666d2;
 			--font-color: black;
 			--checkbox-background: white;
+			--faq-color: #0000ee;
 
 			font-size: 110%;
 			color: var(--font-color);
@@ -34,6 +35,7 @@
 				--enabled-color: #6a5acd;
 				--font-color: #eeeeee;
 				--checkbox-background: #4c4e59;
+				--faq-color: #1892f0;
 			}
 
 			#settings {
@@ -49,6 +51,7 @@
 			padding: 2vw;
 			position: relative;
 			box-shadow: 0 1px 6px rgba(32, 33, 36, 0.28);
+			text-align: justify;
 		}
 
 		.input_container {
@@ -107,7 +110,7 @@
 			border-radius: 5px;
 			transition: background-color .1s;
 		}
-		.big_button:hover {
+		.big_button:hover, .big_button:active {
 			background-color: var(--enabled-color);
         }
 
@@ -155,6 +158,14 @@
 		}
 		.checkbox > input:active {
 			border: 2px solid #34495E;
+		}
+
+		.faq_question {
+			font-size: 1rem;
+			font-weight: normal;
+			text-decoration: underline;
+			color: var(--faq-color);
+			cursor: pointer;
 		}
 		
         #sorry {
@@ -226,12 +237,15 @@
 			.big_button:hover {
 				background-color: var(--disabled-color);
 			}
+			.big_button:active {
+				background-color: var(--enabled-color);
+			}
         }
 	</style>
 </head>
 <body>
 	<script>
-		if ('serviceWorker' in navigator) {
+		if ('serviceWorker' in navigator && window.location.href != "http://localhost:8001/") {
 		navigator.serviceWorker.register('/sw.js', { scope: '/' }).then(function(reg) {
 			if(reg.installing) {
 				console.log('Service worker installing');

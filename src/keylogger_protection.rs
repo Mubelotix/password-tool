@@ -37,7 +37,7 @@ impl KeyloggerProtector {
         self != &KeyloggerProtector::Disabled
     }
 
-    pub fn handle_input(&mut self, password: String) {
+    pub fn handle_input(&mut self, password: String) -> bool {
         match self {
             KeyloggerProtector::Enabled(is_password, remaining, last_value, message) => {
                 *remaining -= 1;
@@ -69,15 +69,16 @@ impl KeyloggerProtector {
                 } else {
                     Message::Warning(format!("Press {} random keys similar to the keys you need to press to write your password. (keylogger protection)", remaining))
                 };
+                true
             },
-            KeyloggerProtector::Disabled => (),
+            KeyloggerProtector::Disabled => false,
         }
     }
 }
 
 impl PasswordSystemComponent for KeyloggerProtector {
     fn get_messages(&self, settings_open: bool, page: &Page) -> Vec<&Message> {
-        if !settings_open && page == &Page::EnterMasterPassword {
+        if !settings_open && matches!(page, Page::EnterMasterPassword(_, _)) {
             match self {
                 KeyloggerProtector::Enabled(_,_,_, message) => vec![&message],
                 KeyloggerProtector::Disabled => Vec::new()
