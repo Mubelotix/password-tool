@@ -448,37 +448,19 @@ impl Component for Model {
                     {"Settings:"}<br />
                     {for messages}
                     <br/>
-                    <label class="label-switch">
-                        <div class="toggle-switch">
-                            <input class="toggle-state-switch" type="checkbox" name="check" value="check" checked=self.settings.store_hash id="settings-store-hash"/>
-                            <div class="toggle-inner-switch">
-                            <div class="indicator-switch"></div>
-                            </div>
-                            <div class="active-bg-switch"></div>
-                        </div>
-                        <div class="label-text-switch">{"Store a hash of my master password (very secure, recommended)"}</div>
+                    <label class="checkbox">
+                        <input type="checkbox" name="check" value="check" checked=self.settings.store_hash id="settings-store-hash"/>
+                        <span>{"Store a hash of my master password (very secure, recommended)"}</span>
                     </label>
                     <br/>
-                    <label class="label-switch">
-                        <div class="toggle-switch">
-                            <input class="toggle-state-switch" type="checkbox" name="check" value="check" checked=self.settings.disallow_invalid_domains  id="settings-disallow-invalid-domains"/>
-                            <div class="toggle-inner-switch">
-                            <div class="indicator-switch"></div>
-                            </div>
-                            <div class="active-bg-switch"></div>
-                        </div>
-                        <div class="label-text-switch">{"Disallow invalid domains"}</div>
+                    <label class="checkbox">
+                        <input type="checkbox" name="check" value="check" checked=self.settings.disallow_invalid_domains  id="settings-disallow-invalid-domains"/>
+                        <span>{"Disallow invalid domains"}</span>
                     </label>
                     <br/>
-                    <label class="label-switch">
-                        <div class="toggle-switch">
-                            <input class="toggle-state-switch" type="checkbox" name="check" value="check" checked=self.settings.keylogger_protection  id="settings-keylogger-protection"/>
-                            <div class="toggle-inner-switch">
-                            <div class="indicator-switch"></div>
-                            </div>
-                            <div class="active-bg-switch"></div>
-                        </div>
-                        <div class="label-text-switch">{"Keylogger protection"}</div>
+                    <label class="checkbox">
+                        <input type="checkbox" name="check" value="check" checked=self.settings.keylogger_protection  id="settings-keylogger-protection"/>
+                        <span>{"Keylogger protection"}</span>
                     </label>
                     <br/>
                     <br/>
