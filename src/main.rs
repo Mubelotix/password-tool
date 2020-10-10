@@ -4,7 +4,6 @@ use yew::prelude::*;
 use sha3::{Digest, Sha3_512};
 use yew::services::storage::{StorageService, Area};
 use string_tools::{get_all_after, get_all_before};
-use wasm_bindgen::prelude::*;
 use web_sys::*;
 
 #[macro_use]
@@ -84,8 +83,8 @@ fn generate_password(master_password: &str, domain: &str, big: bool, only_number
     let mut generated_password = master_password.to_string();
     generated_password.push_str("35Pqfs6FeEf545fD54");
     generated_password.push_str(domain);
-    hasher.input(generated_password);
-    let generated_password = hasher.result();
+    hasher.update(generated_password);
+    let generated_password = hasher.finalize();
 
     let mut generated_password: String = if !only_numbers {
         if special_chars && !big {
@@ -206,24 +205,11 @@ struct Model {
     master_password: String,
     url: String,
     domain: String,
-    generated_master_password: String,
     generated_passwords: [String; 6],
     accessible_password: usize,
     settings_open: bool,
     keylogger_protector: KeyloggerProtector,
     page: Page,
-}
-
-#[derive(Clone, Debug)]
-enum CheckboxId {
-    SpecialChars,
-    Undefined
-}
-
-impl Default for CheckboxId {
-    fn default() -> CheckboxId {
-        CheckboxId::Undefined
-    }
 }
 
 enum Msg {
@@ -249,7 +235,6 @@ impl Component for Model {
         Self {
             messages,
             link,
-            generated_master_password: String::new(),
             page: Page::EnterMasterPassword(false, false),
             master_password: String::new(),
             keylogger_protector,
@@ -272,8 +257,8 @@ impl Component for Model {
                         self.master_password = window().unwrap().document().unwrap().get_element_by_id("password_input").unwrap().dyn_into::<HtmlInputElement>().unwrap().value();
                         
                         let mut hasher = Sha3_512::new();
-                        hasher.input(format!("{}password", self.master_password));
-                        let result = hasher.result();
+                        hasher.update(format!("{}password", self.master_password));
+                        let result = hasher.finalize();
                         let hashed_password: String = hex::encode(result[..].to_vec());
     
                         let storage = StorageService::new(Area::Local).expect("storage unavailable");
@@ -315,8 +300,8 @@ impl Component for Model {
                         if self.settings.store_hash {
                             let mut storage = StorageService::new(Area::Local).expect("storage unavailable");
                             let mut hasher = Sha3_512::new();
-                            hasher.input(format!("{}password", self.master_password));
-                            let result = hasher.result();
+                            hasher.update(format!("{}password", self.master_password));
+                            let result = hasher.finalize();
                             let hashed_password: String = hex::encode(result[..].to_vec());
                             storage.store(&hashed_password, Ok(String::new()));
                         }
