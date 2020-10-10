@@ -14,14 +14,14 @@ Passwords are the result of a cryptographic hash that takes as input the master 
 
 ## Building
 
-Building is very easy thanks to [Cargo]() and [Trunk]().
+Building is very easy thanks to [Rust](https://www.rust-lang.org/) and [Trunk](https://github.com/thedodd/trunk).
 
-Install [Cargo]():
+Install [Rust](https://www.rust-lang.org/):
 ```console
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 
-Install [Trunk]():
+Install [Trunk](https://github.com/thedodd/trunk):
 ```console
 cargo install trunk
 cargo install wasm-bindgen-cli
@@ -48,7 +48,7 @@ Sounds great! Let's implement this.\
 
 ### IPFS-hosted website
 
-[IPFS]() is the perfect place to host this kind of client-side apps.\
+[IPFS](https://ipfs.io/) is the perfect place to host this kind of client-side apps.\
 Currently, my webserver is located in France, so it may seem slow to you.\
 IPFS is a distributed network, so one day, there will be people hosting the files all around the world, and this will be blazing fast.\
 In addition to that, IPFS can guarantee that the page is what you expect and not a malicious version since IPFS files are immutable.\
