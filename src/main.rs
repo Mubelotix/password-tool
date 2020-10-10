@@ -545,7 +545,9 @@ impl Component for Model {
                 for idx in 0..6 {
                     buttons.push(if self.accessible_password >= idx {
                         html! {
-                            <div><button class="big_button" onclick=self.link.callback(move |_| Msg::CopyPassword(idx))>{format!("Password {}", idx)}</button><br/><br/></div>
+                            <div>
+                                <button class="big_button" onclick=self.link.callback(move |_| Msg::CopyPassword(idx))>{format!("Password {}", idx)}</button><br/><br/>
+                            </div>
                         }
                     } else {
                         html! {
@@ -579,7 +581,7 @@ impl Component for Model {
                 html! {
                     <main id="sorry">
                         <img id="settings" src="parameters.png" onclick=self.link.callback(|_| Msg::Settings)/>
-                        <link rel="stylesheet" type="text/css" href="css.css"/>
+                        <link rel="stylesheet"/>
                         <h2> {"Sorry, something is not working"} </h2>
                         <br/>
                         {message}<br/>
