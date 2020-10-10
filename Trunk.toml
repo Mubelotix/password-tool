@@ -1,0 +1,16 @@
+[build]
+# The index HTML file to drive the bundling process.
+target = "index.html"
+# The output dir for all final assets.
+dist = "pkg"
+
+[serve]
+port = 8080
+# Open a browser tab once the initial build is complete.
+open = true
+
+[clean]
+# The output dir for all final assets.
+dist = "pkg"
+# Optionally perform a cargo clean.
+cargo = true

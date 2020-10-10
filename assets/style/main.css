@@ -1,0 +1,204 @@
+* {
+    font-family: 'KoHo', sans-serif;
+    margin: 0;
+    padding: 0;
+}
+
+html {
+    --background-color: #eeebf2;
+    --higher-background-color: white;
+    --disabled-color: #c9a0ff;
+    --enabled-color: #b666d2;
+    --font-color: black;
+    --checkbox-background: white;
+    --faq-color: #0000ee;
+
+    font-size: 110%;
+    color: var(--font-color);
+    background-color: var(--background-color);
+}
+
+main {
+    width: 30vw;
+    margin: 3rem 33vw 3rem 33vw;
+    background-color: var(--higher-background-color);
+    border-radius: 5px;
+    padding: 2vw;
+    position: relative;
+    box-shadow: 0 1px 6px rgba(32, 33, 36, 0.28);
+    text-align: justify;
+}
+
+.input_container {
+    display: flex;
+    flex-direction: column-reverse;
+}
+
+/* input style */
+.big-input {
+    border-radius: 0;
+    height: 2rem;
+    border: none;
+    box-shadow: none;
+    outline: none;
+    background: transparent;
+    color: var(--font-color);
+    border-bottom: 3px solid var(--disabled-color);
+    font-size: 1.2rem;
+    
+    transition: border-color .2s;
+    
+}
+.big-input::placeholder {
+    color: transparent;
+}
+.big-input:focus {
+    border-color: var(--enabled-color);
+}
+.big-input:not(:placeholder-shown) {
+    border-color: var(--enabled-color);
+}
+
+/* label style */
+.label {
+    color: grey;
+    font-size: .9rem;
+    position: relative;
+    top: 1.7rem;
+    transition: .3s;
+}
+.big-input:focus ~ .label {
+    position: relative;
+    top: .1rem;
+    color: var(--font-color);
+}
+.big-input:not(:placeholder-shown) ~ .label {
+    top: .1rem;
+}
+
+/* button style */
+.big_button {
+    all: unset;
+    width: 90%;
+    background-color: var(--disabled-color);
+    padding: .2rem 5%;
+    border-radius: 5px;
+    transition: background-color .1s;
+}
+.big_button:hover, .big_button:active {
+    background-color: var(--enabled-color);
+}
+
+#sorry>.big_button {
+    background-color: red;
+    color: white;
+}
+
+/* checkbox style */
+.checkbox {
+    display: inline-flex;
+    cursor: pointer;
+    position: relative;
+    margin-bottom: .5rem;
+}
+.checkbox > span {
+    line-height: 1rem;
+    margin-left: .5rem;
+    max-width: calc(100% - 1.5rem);
+}
+.checkbox > input {
+    height: 1rem;
+    width: 1rem;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    -o-appearance: none;
+    appearance: none;
+    border: 2px solid var(--disabled-color);
+    border-radius: 4px;
+    outline: none;
+    transition-duration: .3s;
+    cursor: pointer;
+}
+.checkbox > input:checked {
+    border: none;
+    background-color: var(--enabled-color);
+}
+.checkbox > input:checked + span::before {
+    content: '\2713';
+    display: block;
+    text-align: center;
+    color: #41B883;
+    position: absolute;
+    left: 0;
+    width: 1rem;
+}
+.checkbox > input:active {
+    border: 2px solid var(--enabled-color);
+}
+
+.faq_question {
+    font-size: 1rem;
+    font-weight: normal;
+    text-decoration: underline;
+    color: var(--faq-color);
+    cursor: pointer;
+}
+
+#sorry {
+    background-color: #ffafaf;
+    border: 1px solid red;
+}
+
+.disabled_button {
+    background-color: grey;
+    background-image: none;
+}
+.disabled_button:hover {
+    color: black;
+    background-color: #ffafaf;
+}
+
+#settings {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    -webkit-transition: -webkit-transform .3s ease-in-out;
+      transition:         transform .3s ease-in-out;
+}
+
+#settings:hover {
+    -webkit-transform: rotate(60deg);
+      transform: rotate(60deg);
+}
+
+.warning_message {
+    color: #8a6d3b;
+    background-color: #fcf8e3;
+    border: 1px solid #faebcc;
+    padding: .5rem;
+    border-radius: 5px;
+}
+
+.success_message {
+    color: #3c763d;
+    background-color: #dff0d8;
+    border: 1px solid #d6e9c6;
+    padding: .5rem;
+    border-radius: 5px;
+}
+
+.info_message {
+    color: #31708f;
+    background-color: #d9edf7;
+    border: 1px solid #bce8f1;
+    padding: .5rem;
+    border-radius: 5px;
+}
+
+.danger_message {
+    color: #a94442;
+    background-color: #f2dede;
+    border: 1px solid #ebccd1;
+    padding: .5rem;
+    border-radius: 5px;
+}

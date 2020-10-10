@@ -1,0 +1,15 @@
+@media (prefers-color-scheme: dark) {
+    html {
+        --background-color: #36383f;
+        --higher-background-color: #40424b;
+        --disabled-color: #7442c8;
+        --enabled-color: #6a5acd;
+        --font-color: #eeeeee;
+        --checkbox-background: #4c4e59;
+        --faq-color: #1892f0;
+    }
+
+    #settings {
+        filter: invert(80%);
+    }
+}

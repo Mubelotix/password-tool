@@ -2,7 +2,6 @@
 use wasm_bindgen::JsCast;
 use yew::prelude::*;
 use sha3::{Digest, Sha3_512};
-use hex;
 use yew::services::storage::{StorageService, Area};
 use string_tools::{get_all_after, get_all_before};
 use wasm_bindgen::prelude::*;
@@ -409,6 +408,10 @@ impl Component for Model {
         }
     }
 
+    fn change(&mut self, _props: Self::Properties) -> ShouldRender {
+        false
+    }
+
     fn view(&self) -> Html {
         let mut messages = self.messages.iter().collect::<Vec<&Message>>();
         messages.append(&mut self.keylogger_protector.get_messages(self.settings_open, &self.page));
@@ -449,7 +452,7 @@ impl Component for Model {
                 let how_to_get_mp: bool = *how_to_get_mp;
                 html! {
                     <main>
-                        <img id="settings" src="parameters.png" onclick=self.link.callback(|_| Msg::Settings)></img>
+                        <img id="settings" src="parameters.png" onclick=self.link.callback(|_| Msg::Settings)/>
                         {"Welcome!"}<br />
                         {for messages}
                         <br />
@@ -520,7 +523,7 @@ impl Component for Model {
                 html! {
                     <main>
                         {for messages}
-                        <img id="settings" src="parameters.png" onclick=self.link.callback(|_| Msg::Settings)></img>
+                        <img id="settings" src="parameters.png" onclick=self.link.callback(|_| Msg::Settings)/>
                         {"Enter the URL of the website on which you want to get a password."}<br />
                         <br />
                         <div class="input_container">
@@ -539,7 +542,7 @@ impl Component for Model {
                 html! {
                     <main>
                         {for messages}
-                        <img id="settings" src="parameters.png" onclick=self.link.callback(|_| Msg::Settings)></img>
+                        <img id="settings" src="parameters.png" onclick=self.link.callback(|_| Msg::Settings)/>
                         {"Press the button to copy your password."}<br/>
                         <br/>
                         <button class="big_button" onclick=self.link.callback(|_| Msg::CopyPassword(0))>{"Copy password"}</button><br/>
@@ -568,7 +571,7 @@ impl Component for Model {
                 html! {
                     <main>
                         {for messages}
-                        <img id="settings" src="parameters.png" onclick=self.link.callback(|_| Msg::Settings)></img>
+                        <img id="settings" src="parameters.png" onclick=self.link.callback(|_| Msg::Settings)/>
                         {"Try every password of this list in the correct order."}<br/>
                         <br/>
                         {
@@ -590,7 +593,7 @@ impl Component for Model {
             Page::Sorry(message) => {
                 html! {
                     <main id="sorry">
-                        <img id="settings" src="parameters.png" onclick=self.link.callback(|_| Msg::Settings)></img>
+                        <img id="settings" src="parameters.png" onclick=self.link.callback(|_| Msg::Settings)/>
                         <link rel="stylesheet" type="text/css" href="css.css"/>
                         <h2> {"Sorry, something is not working"} </h2>
                         <br/>
@@ -606,10 +609,8 @@ impl Component for Model {
     }
 }
 
-#[wasm_bindgen(start)]
-pub fn start() {
+fn main() {
     yew::initialize();
     App::<Model>::new().mount_to_body();
     yew::run_loop();
 }
-

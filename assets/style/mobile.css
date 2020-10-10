@@ -1,0 +1,14 @@
+@media all and (max-width: 1200px) {
+    main {
+        width: 92vw;
+        margin: 2rem 2vw 2rem 2vw;
+        padding: 2vw;
+    }
+
+    .big_button:hover {
+        background-color: var(--disabled-color);
+    }
+    .big_button:active {
+        background-color: var(--enabled-color);
+    }
+}
