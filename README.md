@@ -44,16 +44,16 @@ OS should detect and kill them, but it seems that they don't feel responsible.\
 That's why we need 2FA.\
 You type one part of your master password on a device and the other part on another device.\
 This way, it is not possible for someone to steal your password without having a keylogger on both devices.\
-Sounds great! Let's implement this.\
+Sounds great! Let's implement this.
 
 ### IPFS-hosted website
 
 [IPFS](https://ipfs.io/) is the perfect place to host this kind of client-side apps.\
 Currently, my webserver is located in France, so it may seem slow to you.\
 IPFS is a distributed network, so one day, there will be people hosting the files all around the world, and this will be blazing fast.\
-In addition to that, IPFS can guarantee that the page is what you expect and not a malicious version since IPFS files are immutable.\
+In addition to that, IPFS can guarantee that the page is what you expect and not a malicious version since IPFS files are immutable.
 
 ### Web extension
 
 What do you think about a web extension auto-completing the passwords fields?\
-Users would only have to enter their master passwords when starting a new browser session because we cannot store it securely.\
+Users would only have to enter their master passwords when starting a new browser session because we cannot store it securely.
