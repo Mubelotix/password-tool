@@ -2,7 +2,7 @@
 
 This project is an easy-to-use innovative password manager.
 It allows users to get strong and unique passwords using a master password.
-That's all. You can try [here](https://passords.mubelotix.dev)\
+That's all. You can try [here](https://passwords.mubelotix.dev)\
 Passwords are the result of a cryptographic hash that takes as input the master password and a domain name.
 
 ## Pros
