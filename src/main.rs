@@ -480,10 +480,8 @@ impl Component for Model {
                             if how_to_get_mp {
                                 let mut master_password = String::new();
                                 while master_password.len() < 14 { // only bytes char so its ok
-                                    let number = get_random_between(32, 127);
-                                    if ((number >= 123 && number <= 126)
-                                    || (number >= 91 && number <= 96) || (number >= 58 && number <= 64) ||
-                                    (number >= 32 && number <= 47)) {
+                                    let number: u8 = get_random_between(32, 127);
+                                    if (123..=126).contains(&number) || (91..=96).contains(&number) || (58..=64).contains(&number) || (32..=47).contains(&number) {
                                         continue
                                     }
                                     master_password.push(number as char);
