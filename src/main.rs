@@ -116,10 +116,20 @@ fn generate_password(master_password: &str, domain: &str, big: bool, only_number
 
 #[derive(PartialEq)]
 pub enum Page {
-    EnterMasterPassword(bool, bool),
-    EnterUrl,
-    DisplayGeneratedPassword,
-    MorePasswords,
+    EnterMasterPassword {
+        how_does_it_work: bool,
+        how_to_get_mp: bool,
+    },
+    EnterUrl {
+        master_password: String,
+    },
+    DisplayPasswords {
+        master_password: String,
+        domain: String,
+        show_more: bool,
+        generated_passwords: [String; 6],
+        accessible_password: usize,
+    },
     Sorry(String)
 }
 
@@ -202,11 +212,6 @@ struct Model {
     messages: Vec<Message>,
     link: ComponentLink<Self>,
     settings: Settings,
-    master_password: String,
-    url: String,
-    domain: String,
-    generated_passwords: [String; 6],
-    accessible_password: usize,
     settings_open: bool,
     keylogger_protector: KeyloggerProtector,
     page: Page,
@@ -235,15 +240,10 @@ impl Component for Model {
         Self {
             messages,
             link,
-            page: Page::EnterMasterPassword(false, false),
-            master_password: String::new(),
+            page: Page::EnterMasterPassword {how_does_it_work: false, how_to_get_mp: false},
             keylogger_protector,
             settings,
-            url: String::new(),
             settings_open: false,
-            generated_passwords: [String::new(),String::new(),String::new(),String::new(),String::new(),String::new()],
-            accessible_password: 0,
-            domain: String::new(),
         }
     }
 
@@ -251,13 +251,12 @@ impl Component for Model {
         match msg {
             Msg::Next => {
                 self.messages = Vec::new();
-                match self.page {
-                    Page::EnterMasterPassword(_, _) => {
-                        // Provisory: because of bad wasm support on mobile
-                        self.master_password = window().unwrap().document().unwrap().get_element_by_id("password_input").unwrap().dyn_into::<HtmlInputElement>().unwrap().value();
-                        
+                match &self.page {
+                    Page::EnterMasterPassword {..} => {
+                        let master_password = window().unwrap().document().unwrap().get_element_by_id("password_input").unwrap().dyn_into::<HtmlInputElement>().unwrap().value();
+
                         let mut hasher = Sha3_512::new();
-                        hasher.update(format!("{}password", self.master_password));
+                        hasher.update(format!("{}password", master_password));
                         let result = hasher.finalize();
                         let hashed_password: String = hex::encode(result[..].to_vec());
     
@@ -272,55 +271,62 @@ impl Component for Model {
                             self.messages.push(Message::Success(String::from("Your master password is correct.")));
                         }
 
-                        self.page = Page::EnterUrl;
+                        self.page = Page::EnterUrl {
+                            master_password,
+                        };
                         true
-
-                        /*if last.is_ok() || DialogService::default().confirm("This password has never been seen on this computer before. Are you sure this password is valid?") {
-                            self.page = Page::EnterUrl;
-                            storage.store(&hashed_password, Ok(String::from("")));
-                            true
-                        } else {
-                            false
-                        }*/
                     },
-                    Page::EnterUrl => {
-                        self.url = window().unwrap().document().unwrap().get_element_by_id("url_input").unwrap().dyn_into::<HtmlInputElement>().unwrap().value();
+                    Page::EnterUrl{master_password} => {
+                        let url = window().unwrap().document().unwrap().get_element_by_id("url_input").unwrap().dyn_into::<HtmlInputElement>().unwrap().value();
 
-                        if let Some(domain) = extract_domain_name(&self.url) {
+                        let domain = if let Some(domain) = extract_domain_name(&url) {
                             self.messages.push(Message::Success(format!("The password for the domain {} has been generated successfully.", domain)));
-                            self.domain = domain;
+                            domain
                         } else if self.settings.disallow_invalid_domains {
                             self.messages.push(Message::Danger(String::from("The URL is not valid.")));
                             return true;
                         } else {
                             self.messages.push(Message::Warning(String::from("The URL is not valid.")));
-                            self.domain = String::from("unknown.unknown");
-                        }
+                            String::from("unknown.unknown")
+                        };
 
                         if self.settings.store_hash {
                             let mut storage = StorageService::new(Area::Local).expect("storage unavailable");
                             let mut hasher = Sha3_512::new();
-                            hasher.update(format!("{}password", self.master_password));
+                            hasher.update(format!("{}password", master_password));
                             let result = hasher.finalize();
                             let hashed_password: String = hex::encode(result[..].to_vec());
                             storage.store(&hashed_password, Ok(String::new()));
                         }
-    
-                        self.generated_passwords[0] = generate_password(&self.master_password, &self.domain, true, false, true);
-                        self.generated_passwords[1] = generate_password(&self.master_password, &self.domain, true, false, false);
-                        self.generated_passwords[2] = generate_password(&self.master_password, &self.domain, true, true, true);
-                        self.generated_passwords[3] = generate_password(&self.master_password, &self.domain, false, false, true);
-                        self.generated_passwords[4] = generate_password(&self.master_password, &self.domain, false, false, false);
-                        self.generated_passwords[5] = generate_password(&self.master_password, &self.domain, false, true, true);
-                        
-                        self.page = Page::DisplayGeneratedPassword;
-                        self.accessible_password = 0;
+
+                        let generated_passwords = [
+                            generate_password(&master_password, &domain, true, false, true),
+                            generate_password(&master_password, &domain, true, false, false),
+                            generate_password(&master_password, &domain, true, true, true),
+                            generate_password(&master_password, &domain, false, false, true),
+                            generate_password(&master_password, &domain, false, false, false),
+                            generate_password(&master_password, &domain, false, true, true),
+                        ];
+
+                        self.page = Page::DisplayPasswords {
+                            master_password: master_password.clone(),
+                            domain,
+                            generated_passwords,
+                            accessible_password: 0,
+                            show_more: false,
+                        };
                         true },
-                    Page::DisplayGeneratedPassword => {self.page = Page::MorePasswords; true},
-                    Page::Sorry(_) => false,
-                    Page::MorePasswords => {
-                        {self.page = Page::Sorry("There is no page here!".to_string()); true}
-                    }
+                    Page::DisplayPasswords{master_password, domain, generated_passwords, accessible_password, ..} => {
+                        self.page = Page::DisplayPasswords {
+                            master_password: master_password.clone(),
+                            domain: domain.clone(),
+                            generated_passwords: generated_passwords.clone(),
+                            accessible_password: *accessible_password,
+                            show_more: true,
+                        };
+                        true
+                    },
+                    Page::Sorry(_) => false
                 }
             },
             Msg::Settings => {
@@ -351,43 +357,45 @@ impl Component for Model {
                 true
             }
             Msg::CopyPassword(idx) => {
-                if idx <= self.accessible_password {
-                    let document = window().unwrap().document().unwrap();
-                    let element = document.create_element("textarea").unwrap();
-                    element.set_attribute("readonly", "").unwrap();
-                    element.set_attribute("style", "position: absolute; left: -9999px").unwrap();
-                    
-                    let element: HtmlTextAreaElement = element.dyn_into().unwrap();
-                    let document: HtmlDocument = document.dyn_into().unwrap();
-                    let body = document.body().unwrap();
-                    element.set_value(&self.generated_passwords[idx]);
-                    body.append_child(&element).unwrap();
-                    element.select();
-                    document.exec_command("copy").unwrap();
-                    body.remove_child(&element).unwrap();
-                    if self.accessible_password == idx {
-                        self.accessible_password += 1;
+                if let Page::DisplayPasswords {accessible_password, generated_passwords, ..} = &mut self.page {
+                    if idx <= *accessible_password {
+                        let document = window().unwrap().document().unwrap();
+                        let element = document.create_element("textarea").unwrap();
+                        element.set_attribute("readonly", "").unwrap();
+                        element.set_attribute("style", "position: absolute; left: -9999px").unwrap();
+    
+                        let element: HtmlTextAreaElement = element.dyn_into().unwrap();
+                        let document: HtmlDocument = document.dyn_into().unwrap();
+                        let body = document.body().unwrap();
+                        element.set_value(&generated_passwords[idx]);
+                        body.append_child(&element).unwrap();
+                        element.select();
+                        document.exec_command("copy").unwrap();
+                        body.remove_child(&element).unwrap();
+                        if *accessible_password == idx {
+                            *accessible_password += 1;
+                        }
+                    } else {
+                        panic!("Error: this password can't be copied now");
                     }
-                } else {
-                    panic!("Error: this password can't be copied now");
                 }
                 true
             },
             Msg::Back => {
                 self.messages = Vec::new();
-                match self.page {
-                    Page::EnterMasterPassword(_, _) => false,
-                    Page::EnterUrl => {self.page = Page::EnterMasterPassword(false, false); true},
-                    Page::DisplayGeneratedPassword => {self.page = Page::EnterUrl; true},
-                    Page::MorePasswords => {self.page = Page::DisplayGeneratedPassword; true},
-                    Page::Sorry(_) => {self.page = Page::EnterMasterPassword(false, false); true},
+                match &self.page {
+                    Page::EnterMasterPassword{..} => (),
+                    Page::EnterUrl{..} => self.page = Page::EnterMasterPassword{how_to_get_mp: false, how_does_it_work: false},
+                    Page::DisplayPasswords{master_password, ..} => self.page = Page::EnterUrl{master_password: master_password.clone()},
+                    Page::Sorry(_) => self.page = Page::EnterMasterPassword {how_to_get_mp: false, how_does_it_work: false},
                 }
+                true
             }
             Msg::InputMasterPassword(password) => {
                 self.keylogger_protector.handle_input(password)
             }
             Msg::ChangePanels(how_does_it_work, how_to_get_mp) => {
-                self.page = Page::EnterMasterPassword(how_does_it_work, how_to_get_mp);
+                self.page = Page::EnterMasterPassword {how_does_it_work, how_to_get_mp };
                 true
             }
         }
@@ -432,7 +440,7 @@ impl Component for Model {
         // TODO <a target="_blank" href="https://icones8.fr/icons/set/settings">Paramètres icon</a> icon by <a target="_blank" href="https://icones8.fr">Icons8</a>
 
         match &self.page {
-            Page::EnterMasterPassword(how_does_it_work, how_to_get_mp) => {
+            Page::EnterMasterPassword{how_does_it_work, how_to_get_mp} => {
                 let how_does_it_work: bool = *how_does_it_work;
                 let how_to_get_mp: bool = *how_to_get_mp;
                 html! {
@@ -504,7 +512,7 @@ impl Component for Model {
                     </main>
                 }
             },
-            Page::EnterUrl => {
+            Page::EnterUrl {..} => {
                 html! {
                     <main>
                         {for messages}
@@ -523,7 +531,7 @@ impl Component for Model {
                     </main>
                 }
             },
-            Page::DisplayGeneratedPassword => {
+            Page::DisplayPasswords {show_more: false, ..} => {
                 html! {
                     <main>
                         {for messages}
@@ -540,10 +548,10 @@ impl Component for Model {
                     </main>
                 }
             },
-            Page::MorePasswords => {
+            Page::DisplayPasswords {show_more: true, accessible_password, ..} => {
                 let mut buttons = Vec::new();
                 for idx in 0..6 {
-                    buttons.push(if self.accessible_password >= idx {
+                    buttons.push(if *accessible_password >= idx {
                         html! {
                             <div>
                                 <button class="big_button" onclick=self.link.callback(move |_| Msg::CopyPassword(idx))>{format!("Password {}", idx)}</button><br/><br/>
@@ -565,7 +573,7 @@ impl Component for Model {
                             for buttons
                         }
                         {
-                            if self.accessible_password > 5 {
+                            if *accessible_password > 5 {
                                 Message::Info(String::from("If none of these passwords above is working and you are trying to sign up, please find a password by yourself. You can send me an email (at mubelotix@gmail.com) to report the website, and I will see if I can do something. This website is weakly configured, and I can't do anything for that. If you are trying to sign in, either you didn't enter the correct password or the correct URL, or you created a password by yourself on this website.")).view()
                             } else {
                                 html!{}

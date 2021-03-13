@@ -78,7 +78,7 @@ impl KeyloggerProtector {
 
 impl PasswordSystemComponent for KeyloggerProtector {
     fn get_messages(&self, settings_open: bool, page: &Page) -> Vec<&Message> {
-        if !settings_open && matches!(page, Page::EnterMasterPassword(_, _)) {
+        if !settings_open && matches!(page, Page::EnterMasterPassword{..}) {
             match self {
                 KeyloggerProtector::Enabled(_,_,_, message) => vec![&message],
                 KeyloggerProtector::Disabled => Vec::new()
