@@ -30,6 +30,22 @@ pub enum MasterPasswordCheck {
     Unchecked,
 }
 
+impl Renderable for MasterPasswordCheck {
+    fn render(&self) -> Html {
+        match self {
+            MasterPasswordCheck::Checked => html! {
+                <Message level="success">{"Your master password is correct."}</Message>
+            },
+            MasterPasswordCheck::Unchecked => html! {
+                <Message level="warning">{"Your master password is not checked (see settings)."}</Message>
+            },
+            MasterPasswordCheck::Missing => html! {
+                <Message level="danger">{"Your master password seems wrong as it was never used on this computer before."}</Message>
+            },
+        }
+    }
+}
+
 #[derive(PartialEq)]
 pub enum Page {
     EnterMasterPassword,
@@ -356,17 +372,7 @@ impl Component for Model {
             } => {
                 html! {
                     <main>
-                        {match master_password_check {
-                            MasterPasswordCheck::Checked => html! {
-                                <Message level="success">{"Your master password is correct."}</Message>
-                            },
-                            MasterPasswordCheck::Unchecked => html! {
-                                <Message level="warning">{"Your master password is not checked (see settings)."}</Message>
-                            },
-                            MasterPasswordCheck::Missing => html! {
-                                <Message level="danger">{"Your master password seems wrong as it was never used on this computer before."}</Message>
-                            },
-                        }}
+                        {master_password_check.render()}
                         <img id="settings" src="parameters.png" onclick=self.link.callback(|_| Msg::Settings)/>
                         {"Enter the URL of the website on which you want to get a password."}<br />
                         <br />
@@ -389,20 +395,7 @@ impl Component for Model {
             } => {
                 html! {
                     <main>
-                        {
-                            match domain {
-                                Domain::Checking(provisory_domain) => html! {
-                                    <Message level="warning">
-                                        {format!("The domain {} may not be valid.", provisory_domain)}
-                                    </Message>
-                                },
-                                Domain::Checked(domain) => html! {},
-                                Domain::Uncheckable(provisory_domain, error) => html! {
-                                    <Message level="warning">
-                                        {format!("The domain {} may not be valid as the program was unable to check it (check network) (error message: {}).", provisory_domain, error)}
-                                    </Message>},
-                            }
-                        }
+                        {domain.render()}
                         <img id="settings" src="parameters.png" onclick=self.link.callback(|_| Msg::Settings)/>
                         {"Press the button to copy your password for "}<a href=domain.as_ref()>{domain.as_ref()}</a>{"."}<br/>
                         <br/>

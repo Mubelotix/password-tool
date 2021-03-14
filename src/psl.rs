@@ -1,3 +1,4 @@
+use crate::message::Message;
 use js_sys::{Array, Reflect::get};
 use std::{
     convert::{AsRef, TryInto},
@@ -12,6 +13,24 @@ pub enum Domain {
     Checking(String),
     Checked(String),
     Uncheckable(String, &'static str),
+}
+
+impl Renderable for Domain {
+    fn render(&self) -> Html {
+        match self {
+            Domain::Checking(provisory_domain) => html! {
+                <Message level="warning">
+                    {format!("The domain {} may not be valid.", provisory_domain)}
+                </Message>
+            },
+            Domain::Checked(_domain) => html! {},
+            Domain::Uncheckable(provisory_domain, error) => html! {
+                <Message level="warning">
+                    {format!("The domain {} may not be valid as the program was unable to check it (check network) (error message: {}).", provisory_domain, error)}
+                </Message>
+            },
+        }
+    }
 }
 
 impl Domain {

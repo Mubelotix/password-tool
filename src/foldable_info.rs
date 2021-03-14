@@ -29,7 +29,9 @@ impl Component for FoldableInfo {
         true
     }
 
-    fn change(&mut self, _props: Self::Properties) -> ShouldRender {
+    fn change(&mut self, props: Self::Properties) -> ShouldRender {
+        self.props = props;
+        self.open = false;
         true
     }
 
