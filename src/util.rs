@@ -51,8 +51,3 @@ pub fn get_random_between(min: u8, under: u8) -> u8 {
     crypto.get_random_values_with_u8_array(&mut random).unwrap();
     min + (random[0] % (under - min))
 }
-
-use crate::{Page, Message};
-pub trait PasswordSystemComponent {
-    fn get_messages(&self, settings_open: bool, page: &Page) -> Vec<&Message>;
-}
