@@ -23,18 +23,14 @@ impl Domain {
                 let host2 = host.clone();
                 wasm_bindgen_futures::spawn_local(async move {
                     match request_psl(host2.clone()).await {
-                        Ok(domain) => {
-                            link.send_message(crate::Msg::PslResponse {
-                                host: host2.clone(),
-                                result: Ok(domain),
-                            })
-                        }
-                        Err(error) => {
-                            link.send_message(crate::Msg::PslResponse {
-                                host: host2.clone(),
-                                result: Err(error),
-                            })
-                        }
+                        Ok(domain) => link.send_message(crate::Msg::PslResponse {
+                            host: host2.clone(),
+                            result: Ok(domain),
+                        }),
+                        Err(error) => link.send_message(crate::Msg::PslResponse {
+                            host: host2.clone(),
+                            result: Err(error),
+                        }),
                     };
                 });
                 Domain::Checking(format!(

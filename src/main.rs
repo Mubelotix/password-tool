@@ -9,14 +9,14 @@ use yew::services::storage::{Area, StorageService};
 
 #[macro_use]
 mod util;
+mod generation;
+mod message;
 mod psl;
 mod settings;
-mod message;
-mod generation;
 use generation::*;
 use message::*;
-use settings::*;
 use psl::*;
+use settings::*;
 use util::*;
 mod keylogger_protection;
 use keylogger_protection::*;
@@ -96,132 +96,116 @@ impl Component for Model {
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
-            Msg::Next => {
-                match &self.page {
-                    Page::EnterMasterPassword { .. } => {
-                        let master_password = window()
-                            .unwrap()
-                            .document()
-                            .unwrap()
-                            .get_element_by_id("password_input")
-                            .unwrap()
-                            .dyn_into::<HtmlInputElement>()
-                            .unwrap()
-                            .value();
+            Msg::Next => match &self.page {
+                Page::EnterMasterPassword { .. } => {
+                    let master_password = window()
+                        .unwrap()
+                        .document()
+                        .unwrap()
+                        .get_element_by_id("password_input")
+                        .unwrap()
+                        .dyn_into::<HtmlInputElement>()
+                        .unwrap()
+                        .value();
 
-                        if master_password.is_empty() {
-                            return false;
-                        }
+                    if master_password.is_empty() {
+                        return false;
+                    }
 
+                    let mut hasher = Sha3_512::new();
+                    hasher.update(format!("{}password", master_password));
+                    let result = hasher.finalize();
+                    let hashed_password: String = hex::encode(result[..].to_vec());
+
+                    let storage = StorageService::new(Area::Local).expect("storage unavailable");
+                    let last: Result<String, _> = storage.restore(&hashed_password);
+
+                    let master_password_check = match (last.is_ok(), self.settings.store_hash) {
+                        (true, _) => MasterPasswordCheck::Checked,
+                        (false, true) => MasterPasswordCheck::Missing,
+                        (false, false) => MasterPasswordCheck::Unchecked,
+                    };
+
+                    self.page = Page::EnterUrl {
+                        master_password,
+                        master_password_check,
+                    };
+                    true
+                }
+                Page::EnterUrl {
+                    master_password, ..
+                } => {
+                    let url = window()
+                        .unwrap()
+                        .document()
+                        .unwrap()
+                        .get_element_by_id("url_input")
+                        .unwrap()
+                        .dyn_into::<HtmlInputElement>()
+                        .unwrap()
+                        .value();
+
+                    if url.is_empty() {
+                        return false;
+                    }
+
+                    let host: String = if let Ok(url) = Url::new(&url) {
+                        url.host()
+                    } else {
+                        url
+                    };
+
+                    let domain = Domain::check(Rc::clone(&self.link), host.clone());
+
+                    if self.settings.store_hash {
+                        let mut storage =
+                            StorageService::new(Area::Local).expect("storage unavailable");
                         let mut hasher = Sha3_512::new();
                         hasher.update(format!("{}password", master_password));
                         let result = hasher.finalize();
                         let hashed_password: String = hex::encode(result[..].to_vec());
-
-                        let storage =
-                            StorageService::new(Area::Local).expect("storage unavailable");
-                        let last: Result<String, _> = storage.restore(&hashed_password);
-
-                        let master_password_check = match (last.is_ok(), self.settings.store_hash) {
-                            (true, _) => MasterPasswordCheck::Checked,
-                            (false, true) => MasterPasswordCheck::Missing,
-                            (false, false) => MasterPasswordCheck::Unchecked,
-                        };
-
-                        self.page = Page::EnterUrl { master_password, master_password_check };
-                        true
+                        storage.store(&hashed_password, Ok(String::new()));
                     }
-                    Page::EnterUrl { master_password, .. } => {
-                        let url = window()
-                            .unwrap()
-                            .document()
-                            .unwrap()
-                            .get_element_by_id("url_input")
-                            .unwrap()
-                            .dyn_into::<HtmlInputElement>()
-                            .unwrap()
-                            .value();
 
-                        if url.is_empty() {
-                            return false;
-                        }
+                    let generated_passwords = [
+                        generate_password(&master_password, domain.as_ref(), true, false, true),
+                        generate_password(&master_password, domain.as_ref(), true, false, false),
+                        generate_password(&master_password, domain.as_ref(), true, true, true),
+                        generate_password(&master_password, domain.as_ref(), false, false, true),
+                        generate_password(&master_password, domain.as_ref(), false, false, false),
+                        generate_password(&master_password, domain.as_ref(), false, true, true),
+                    ];
 
-                        let host: String = if let Ok(url) = Url::new(&url) {
-                            url.host()
-                        } else {
-                            url
-                        };
-
-                        let domain = Domain::check(Rc::clone(&self.link), host.clone());
-
-                        if self.settings.store_hash {
-                            let mut storage =
-                                StorageService::new(Area::Local).expect("storage unavailable");
-                            let mut hasher = Sha3_512::new();
-                            hasher.update(format!("{}password", master_password));
-                            let result = hasher.finalize();
-                            let hashed_password: String = hex::encode(result[..].to_vec());
-                            storage.store(&hashed_password, Ok(String::new()));
-                        }
-
-                        let generated_passwords = [
-                            generate_password(&master_password, domain.as_ref(), true, false, true),
-                            generate_password(
-                                &master_password,
-                                domain.as_ref(),
-                                true,
-                                false,
-                                false,
-                            ),
-                            generate_password(&master_password, domain.as_ref(), true, true, true),
-                            generate_password(
-                                &master_password,
-                                domain.as_ref(),
-                                false,
-                                false,
-                                true,
-                            ),
-                            generate_password(
-                                &master_password,
-                                domain.as_ref(),
-                                false,
-                                false,
-                                false,
-                            ),
-                            generate_password(&master_password, domain.as_ref(), false, true, true),
-                        ];
-
-                        self.page = Page::DisplayPasswords {
-                            master_password: master_password.clone(),
-                            host,
-                            domain,
-                            generated_passwords,
-                            accessible_password: 0,
-                            show_more: false,
-                        };
-                        true
-                    }
-                    Page::DisplayPasswords {
-                        master_password,
+                    self.page = Page::DisplayPasswords {
+                        master_password: master_password.clone(),
                         host,
-                        generated_passwords,
-                        accessible_password,
                         domain,
-                        ..
-                    } => {
-                        self.page = Page::DisplayPasswords {
-                            master_password: master_password.clone(),
-                            host: host.clone(),
-                            domain: domain.clone(),
-                            generated_passwords: generated_passwords.clone(),
-                            accessible_password: *accessible_password,
-                            show_more: true,
-                        };
-                        true
-                    }
-                    Page::Sorry(_) => false,
+                        generated_passwords,
+                        accessible_password: 0,
+                        show_more: false,
+                    };
+                    true
                 }
-            }
+                Page::DisplayPasswords {
+                    master_password,
+                    host,
+                    generated_passwords,
+                    accessible_password,
+                    domain,
+                    ..
+                } => {
+                    self.page = Page::DisplayPasswords {
+                        master_password: master_password.clone(),
+                        host: host.clone(),
+                        domain: domain.clone(),
+                        generated_passwords: generated_passwords.clone(),
+                        accessible_password: *accessible_password,
+                        show_more: true,
+                    };
+                    true
+                }
+                Page::Sorry(_) => false,
+            },
             Msg::Settings => {
                 if self.settings_open {
                     let window = window().unwrap();
@@ -339,10 +323,28 @@ impl Component for Model {
 
                         *generated_passwords = [
                             generate_password(&master_password, domain.as_ref(), true, false, true),
-                            generate_password(&master_password, domain.as_ref(), true, false, false),
+                            generate_password(
+                                &master_password,
+                                domain.as_ref(),
+                                true,
+                                false,
+                                false,
+                            ),
                             generate_password(&master_password, domain.as_ref(), true, true, true),
-                            generate_password(&master_password, domain.as_ref(), false, false, true),
-                            generate_password(&master_password, domain.as_ref(), false, false, false),
+                            generate_password(
+                                &master_password,
+                                domain.as_ref(),
+                                false,
+                                false,
+                                true,
+                            ),
+                            generate_password(
+                                &master_password,
+                                domain.as_ref(),
+                                false,
+                                false,
+                                false,
+                            ),
                             generate_password(&master_password, domain.as_ref(), false, true, true),
                         ];
                     } else {
@@ -441,7 +443,10 @@ impl Component for Model {
                     </main>
                 }
             }
-            Page::EnterUrl { master_password_check, .. } => {
+            Page::EnterUrl {
+                master_password_check,
+                ..
+            } => {
                 html! {
                     <main>
                         {match master_password_check {
@@ -471,7 +476,9 @@ impl Component for Model {
                 }
             }
             Page::DisplayPasswords {
-                domain, show_more: false, ..
+                domain,
+                show_more: false,
+                ..
             } => {
                 html! {
                     <main>

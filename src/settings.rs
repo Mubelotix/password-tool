@@ -1,4 +1,4 @@
-use crate::{Model, Msg, message::Message};
+use crate::{message::Message, Model, Msg};
 use std::rc::Rc;
 use yew::prelude::*;
 use yew::services::storage::{Area, StorageService};

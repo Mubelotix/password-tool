@@ -15,9 +15,7 @@ impl Component for Message {
     type Properties = MessageProperties;
 
     fn create(props: Self::Properties, _link: ComponentLink<Self>) -> Self {
-        Message {
-            props
-        }
+        Message { props }
     }
 
     fn update(&mut self, _msg: Self::Message) -> ShouldRender {

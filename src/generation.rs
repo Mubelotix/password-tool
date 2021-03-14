@@ -74,7 +74,7 @@ mod test {
             generate_password("testing2", "amazon.com", true, false, true),
         );
     }
-    
+
     #[test]
     fn test_backward_compatibility() {
         assert_eq!(
