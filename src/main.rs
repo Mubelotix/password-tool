@@ -1,46 +1,89 @@
-#![recursion_limit="1024"]
-use wasm_bindgen::JsCast;
-use yew::prelude::*;
+#![recursion_limit = "1024"]
+use psl::request_psl;
 use sha3::{Digest, Sha3_512};
-use yew::services::storage::{StorageService, Area};
+use std::rc::Rc;
 use string_tools::{get_all_after, get_all_before};
+use wasm_bindgen::JsCast;
 use web_sys::*;
+use yew::prelude::*;
+use yew::services::storage::{Area, StorageService};
 
 #[macro_use]
 mod util;
+mod psl;
+use psl::*;
 use util::*;
 mod keylogger_protection;
 use keylogger_protection::*;
 
 #[cfg(test)]
 mod test {
-    use super::generate_password;
     use super::extract_domain_name;
+    use super::generate_password;
 
     #[test]
     fn test_password_did_not_changed() {
-        assert_eq!(generate_password("testing", "example.com", true, false, true), "2d70dac574dbfa9aa025c3750657e70773d6b2a9b00f@*_BQF");
+        assert_eq!(
+            generate_password("testing", "example.com", true, false, true),
+            "2d70dac574dbfa9aa025c3750657e70773d6b2a9b00f@*_BQF"
+        );
     }
 
     #[test]
     fn url() {
-        assert_eq!(&extract_domain_name("https://google.com").unwrap(), "google.com");
+        assert_eq!(
+            &extract_domain_name("https://google.com").unwrap(),
+            "google.com"
+        );
         assert_eq!(&extract_domain_name("google.com").unwrap(), "google.com");
-        assert_eq!(&extract_domain_name("https://google.com/test").unwrap(), "google.com");
-        assert_eq!(&extract_domain_name("http://mubelotix.dev/passwords").unwrap(), "mubelotix.dev");
-        assert_eq!(&extract_domain_name("https://test.mubelotix.dev/index.html").unwrap(), "mubelotix.dev");
+        assert_eq!(
+            &extract_domain_name("https://google.com/test").unwrap(),
+            "google.com"
+        );
+        assert_eq!(
+            &extract_domain_name("http://mubelotix.dev/passwords").unwrap(),
+            "mubelotix.dev"
+        );
+        assert_eq!(
+            &extract_domain_name("https://test.mubelotix.dev/index.html").unwrap(),
+            "mubelotix.dev"
+        );
     }
 
     #[test]
     fn backward_compatibility_test() {
-        assert_eq!(&generate_password("test", "unknown.unknown", false, false, false), "00c7dfebc7943SOD");
-        assert_eq!(&generate_password("test", "unknown.unknown", false, false, true), "00c7dfebc769*_BQ");
-        assert_eq!(&generate_password("test", "unknown.unknown", false, true, false), "0199223235199105");
-        assert_eq!(&generate_password("test", "unknown.unknown", false, true, true), "0199223235199105");
-        assert_eq!(&generate_password("test", "unknown.unknown", true, false, false), "00c7dfebc769bc042ad64ed60d9447dcaeaf7e9cabef943SOD");
-        assert_eq!(&generate_password("test", "unknown.unknown", true, false, true), "00c7dfebc769bc042ad64ed60d9447dcaeaf7e9cabef@*_BQF");
-        assert_eq!(&generate_password("test", "unknown.unknown", true, true, false), "01992232351991051884422147821413148712201741751261");
-        assert_eq!(&generate_password("test", "unknown.unknown", true, true, true), "01992232351991051884422147821413148712201741751261");
+        assert_eq!(
+            &generate_password("test", "unknown.unknown", false, false, false),
+            "00c7dfebc7943SOD"
+        );
+        assert_eq!(
+            &generate_password("test", "unknown.unknown", false, false, true),
+            "00c7dfebc769*_BQ"
+        );
+        assert_eq!(
+            &generate_password("test", "unknown.unknown", false, true, false),
+            "0199223235199105"
+        );
+        assert_eq!(
+            &generate_password("test", "unknown.unknown", false, true, true),
+            "0199223235199105"
+        );
+        assert_eq!(
+            &generate_password("test", "unknown.unknown", true, false, false),
+            "00c7dfebc769bc042ad64ed60d9447dcaeaf7e9cabef943SOD"
+        );
+        assert_eq!(
+            &generate_password("test", "unknown.unknown", true, false, true),
+            "00c7dfebc769bc042ad64ed60d9447dcaeaf7e9cabef@*_BQF"
+        );
+        assert_eq!(
+            &generate_password("test", "unknown.unknown", true, true, false),
+            "01992232351991051884422147821413148712201741751261"
+        );
+        assert_eq!(
+            &generate_password("test", "unknown.unknown", true, true, true),
+            "01992232351991051884422147821413148712201741751261"
+        );
     }
 }
 
@@ -52,34 +95,36 @@ fn extract_domain_name(mut url: &str) -> Option<String> {
     };
     let mut url = String::from(get_all_before(url, "/"));
     let mut domain = String::new();
-    
+
     while !url.is_empty() && !url.ends_with('.') {
-        domain.insert(0, url.remove(url.len()-1))
+        domain.insert(0, url.remove(url.len() - 1))
     }
 
     if !url.is_empty() && !domain.is_empty() {
         domain.insert(0, '.');
-        url.remove(url.len()-1);
+        url.remove(url.len() - 1);
     } else {
-        return None
+        return None;
     }
 
     while !url.is_empty() && !url.ends_with('.') {
-        domain.insert(0, url.remove(url.len()-1))
+        domain.insert(0, url.remove(url.len() - 1))
     }
 
     Some(domain)
 }
 
-fn generate_password(master_password: &str, domain: &str, big: bool, only_numbers: bool, special_chars: bool) -> String {
-    let password_size = if big {
-        50
-    } else {
-        16
-    };
-    
+fn generate_password(
+    master_password: &str,
+    domain: &str,
+    big: bool,
+    only_numbers: bool,
+    special_chars: bool,
+) -> String {
+    let password_size = if big { 50 } else { 16 };
+
     let mut hasher = Sha3_512::new();
-    
+
     let mut generated_password = master_password.to_string();
     generated_password.push_str("35Pqfs6FeEf545fD54");
     generated_password.push_str(domain);
@@ -88,9 +133,9 @@ fn generate_password(master_password: &str, domain: &str, big: bool, only_number
 
     let mut generated_password: String = if !only_numbers {
         if special_chars && !big {
-            hex::encode(generated_password[..password_size/2-2].to_vec())
+            hex::encode(generated_password[..password_size / 2 - 2].to_vec())
         } else {
-            hex::encode(generated_password[..password_size/2-3].to_vec())
+            hex::encode(generated_password[..password_size / 2 - 3].to_vec())
         }
     } else {
         let mut generated_password2 = String::new();
@@ -125,12 +170,13 @@ pub enum Page {
     },
     DisplayPasswords {
         master_password: String,
-        domain: String,
+        host: String,
+        domain: Domain,
         show_more: bool,
         generated_passwords: [String; 6],
         accessible_password: usize,
     },
-    Sorry(String)
+    Sorry(String),
 }
 
 #[derive(PartialEq)]
@@ -151,7 +197,7 @@ impl Message {
                         {message}
                     </p>
                 }
-            },
+            }
             Message::Info(message) => {
                 html! {
                     <p class="info_message">
@@ -159,7 +205,7 @@ impl Message {
                         {message}
                     </p>
                 }
-            },
+            }
             Message::Warning(message) => {
                 html! {
                     <p class="warning_message">
@@ -167,7 +213,7 @@ impl Message {
                         {message}
                     </p>
                 }
-            },
+            }
             Message::Danger(message) => {
                 html! {
                     <p class="danger_message">
@@ -191,17 +237,35 @@ impl Settings {
         let storage = StorageService::new(Area::Local).ok()?;
 
         Some(Settings {
-            store_hash: storage.restore::<Result<String, _>>("settings:store_hash").ok()?.parse().ok()?,
-            disallow_invalid_domains: storage.restore::<Result<String, _>>("settings:disallow_invalid_domains").ok()?.parse().ok()?,
-            keylogger_protection: storage.restore::<Result<String, _>>("settings:keylogger_protection").ok()?.parse().ok()?,
+            store_hash: storage
+                .restore::<Result<String, _>>("settings:store_hash")
+                .ok()?
+                .parse()
+                .ok()?,
+            disallow_invalid_domains: storage
+                .restore::<Result<String, _>>("settings:disallow_invalid_domains")
+                .ok()?
+                .parse()
+                .ok()?,
+            keylogger_protection: storage
+                .restore::<Result<String, _>>("settings:keylogger_protection")
+                .ok()?
+                .parse()
+                .ok()?,
         })
     }
 
     fn save(&self) -> bool {
         if let Ok(mut storage) = StorageService::new(Area::Local) {
             storage.store("settings:store_hash", Ok(self.store_hash.to_string()));
-            storage.store("settings:disallow_invalid_domains", Ok(self.disallow_invalid_domains.to_string()));
-            storage.store("settings:keylogger_protection", Ok(self.keylogger_protection.to_string()));
+            storage.store(
+                "settings:disallow_invalid_domains",
+                Ok(self.disallow_invalid_domains.to_string()),
+            );
+            storage.store(
+                "settings:keylogger_protection",
+                Ok(self.keylogger_protection.to_string()),
+            );
             return true;
         }
         false
@@ -210,7 +274,7 @@ impl Settings {
 
 struct Model {
     messages: Vec<Message>,
-    link: ComponentLink<Self>,
+    link: Rc<ComponentLink<Self>>,
     settings: Settings,
     settings_open: bool,
     keylogger_protector: KeyloggerProtector,
@@ -220,6 +284,10 @@ struct Model {
 enum Msg {
     Next,
     Back,
+    PslResponse {
+        host: String,
+        result: Result<String, &'static str>,
+    },
     InputMasterPassword(String),
     Settings,
     CopyPassword(usize),
@@ -231,7 +299,11 @@ impl Component for Model {
     type Properties = ();
     fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
         let messages = Vec::new();
-        let settings = Settings::load().unwrap_or(Settings {store_hash: true, disallow_invalid_domains: true, keylogger_protection: false});
+        let settings = Settings::load().unwrap_or(Settings {
+            store_hash: true,
+            disallow_invalid_domains: true,
+            keylogger_protection: false,
+        });
         let mut keylogger_protector = KeyloggerProtector::new();
         if settings.keylogger_protection {
             keylogger_protector.enable();
@@ -239,8 +311,11 @@ impl Component for Model {
 
         Self {
             messages,
-            link,
-            page: Page::EnterMasterPassword {how_does_it_work: false, how_to_get_mp: false},
+            link: Rc::new(link),
+            page: Page::EnterMasterPassword {
+                how_does_it_work: false,
+                how_to_get_mp: false,
+            },
             keylogger_protector,
             settings,
             settings_open: false,
@@ -252,15 +327,24 @@ impl Component for Model {
             Msg::Next => {
                 self.messages = Vec::new();
                 match &self.page {
-                    Page::EnterMasterPassword {..} => {
-                        let master_password = window().unwrap().document().unwrap().get_element_by_id("password_input").unwrap().dyn_into::<HtmlInputElement>().unwrap().value();
+                    Page::EnterMasterPassword { .. } => {
+                        let master_password = window()
+                            .unwrap()
+                            .document()
+                            .unwrap()
+                            .get_element_by_id("password_input")
+                            .unwrap()
+                            .dyn_into::<HtmlInputElement>()
+                            .unwrap()
+                            .value();
 
                         let mut hasher = Sha3_512::new();
                         hasher.update(format!("{}password", master_password));
                         let result = hasher.finalize();
                         let hashed_password: String = hex::encode(result[..].to_vec());
-    
-                        let storage = StorageService::new(Area::Local).expect("storage unavailable");
+
+                        let storage =
+                            StorageService::new(Area::Local).expect("storage unavailable");
                         let last: Result<String, _> = storage.restore(&hashed_password);
 
                         if last.is_err() && self.settings.store_hash {
@@ -268,30 +352,40 @@ impl Component for Model {
                         } else if !self.settings.store_hash {
                             self.messages.push(Message::Warning(String::from("This master password has not been verified. (disabled in your parameters)")));
                         } else if last.is_ok() {
-                            self.messages.push(Message::Success(String::from("Your master password is correct.")));
+                            self.messages.push(Message::Success(String::from(
+                                "Your master password is correct.",
+                            )));
                         }
 
-                        self.page = Page::EnterUrl {
-                            master_password,
-                        };
+                        self.page = Page::EnterUrl { master_password };
                         true
-                    },
-                    Page::EnterUrl{master_password} => {
-                        let url = window().unwrap().document().unwrap().get_element_by_id("url_input").unwrap().dyn_into::<HtmlInputElement>().unwrap().value();
+                    }
+                    Page::EnterUrl { master_password } => {
+                        let url = window()
+                            .unwrap()
+                            .document()
+                            .unwrap()
+                            .get_element_by_id("url_input")
+                            .unwrap()
+                            .dyn_into::<HtmlInputElement>()
+                            .unwrap()
+                            .value();
 
-                        let domain = if let Some(domain) = extract_domain_name(&url) {
-                            self.messages.push(Message::Success(format!("The password for the domain {} has been generated successfully.", domain)));
-                            domain
-                        } else if self.settings.disallow_invalid_domains {
-                            self.messages.push(Message::Danger(String::from("The URL is not valid.")));
-                            return true;
+                        let host: String = if let Ok(url) = Url::new(&url) {
+                            self.messages.push(Message::Success(format!(
+                                "The password for the domain {} has been generated successfully.",
+                                url.host()
+                            )));
+                            url.host()
                         } else {
-                            self.messages.push(Message::Warning(String::from("The URL is not valid.")));
-                            String::from("unknown.unknown")
+                            url
                         };
+
+                        let domain = Domain::check(Rc::clone(&self.link), host.clone());
 
                         if self.settings.store_hash {
-                            let mut storage = StorageService::new(Area::Local).expect("storage unavailable");
+                            let mut storage =
+                                StorageService::new(Area::Local).expect("storage unavailable");
                             let mut hasher = Sha3_512::new();
                             hasher.update(format!("{}password", master_password));
                             let result = hasher.finalize();
@@ -300,70 +394,125 @@ impl Component for Model {
                         }
 
                         let generated_passwords = [
-                            generate_password(&master_password, &domain, true, false, true),
-                            generate_password(&master_password, &domain, true, false, false),
-                            generate_password(&master_password, &domain, true, true, true),
-                            generate_password(&master_password, &domain, false, false, true),
-                            generate_password(&master_password, &domain, false, false, false),
-                            generate_password(&master_password, &domain, false, true, true),
+                            generate_password(&master_password, domain.as_ref(), true, false, true),
+                            generate_password(
+                                &master_password,
+                                domain.as_ref(),
+                                true,
+                                false,
+                                false,
+                            ),
+                            generate_password(&master_password, domain.as_ref(), true, true, true),
+                            generate_password(
+                                &master_password,
+                                domain.as_ref(),
+                                false,
+                                false,
+                                true,
+                            ),
+                            generate_password(
+                                &master_password,
+                                domain.as_ref(),
+                                false,
+                                false,
+                                false,
+                            ),
+                            generate_password(&master_password, domain.as_ref(), false, true, true),
                         ];
 
                         self.page = Page::DisplayPasswords {
                             master_password: master_password.clone(),
+                            host,
                             domain,
                             generated_passwords,
                             accessible_password: 0,
                             show_more: false,
                         };
-                        true },
-                    Page::DisplayPasswords{master_password, domain, generated_passwords, accessible_password, ..} => {
+                        true
+                    }
+                    Page::DisplayPasswords {
+                        master_password,
+                        host,
+                        generated_passwords,
+                        accessible_password,
+                        domain,
+                        ..
+                    } => {
                         self.page = Page::DisplayPasswords {
                             master_password: master_password.clone(),
+                            host: host.clone(),
                             domain: domain.clone(),
                             generated_passwords: generated_passwords.clone(),
                             accessible_password: *accessible_password,
                             show_more: true,
                         };
                         true
-                    },
-                    Page::Sorry(_) => false
+                    }
+                    Page::Sorry(_) => false,
                 }
-            },
+            }
             Msg::Settings => {
                 self.messages = Vec::new();
                 if self.settings_open {
                     let window = window().unwrap();
                     let document = window.document().unwrap();
-                    let store_hash = document.get_element_by_id("settings-store-hash").unwrap().dyn_into::<HtmlInputElement>().unwrap().checked();
-                    let disallow_invalid_domains = document.get_element_by_id("settings-disallow-invalid-domains").unwrap().dyn_into::<HtmlInputElement>().unwrap().checked();
-                    let keylogger_protection = document.get_element_by_id("settings-keylogger-protection").unwrap().dyn_into::<HtmlInputElement>().unwrap().checked();
+                    let store_hash = document
+                        .get_element_by_id("settings-store-hash")
+                        .unwrap()
+                        .dyn_into::<HtmlInputElement>()
+                        .unwrap()
+                        .checked();
+                    let disallow_invalid_domains = document
+                        .get_element_by_id("settings-disallow-invalid-domains")
+                        .unwrap()
+                        .dyn_into::<HtmlInputElement>()
+                        .unwrap()
+                        .checked();
+                    let keylogger_protection = document
+                        .get_element_by_id("settings-keylogger-protection")
+                        .unwrap()
+                        .dyn_into::<HtmlInputElement>()
+                        .unwrap()
+                        .checked();
 
                     self.settings = Settings {
                         disallow_invalid_domains,
                         store_hash,
-                        keylogger_protection
+                        keylogger_protection,
                     };
                     self.settings.save();
 
-                    if self.settings.keylogger_protection && !self.keylogger_protector.is_enabled() {
+                    if self.settings.keylogger_protection && !self.keylogger_protector.is_enabled()
+                    {
                         self.keylogger_protector.enable();
-                    } else if !self.settings.keylogger_protection && self.keylogger_protector.is_enabled() {
+                    } else if !self.settings.keylogger_protection
+                        && self.keylogger_protector.is_enabled()
+                    {
                         self.keylogger_protector.disable();
                     }
                 } else {
-                    self.messages.push(Message::Warning(String::from("The settings are shared with every users.")));
+                    self.messages.push(Message::Warning(String::from(
+                        "The settings are shared with every users.",
+                    )));
                 }
                 self.settings_open = !self.settings_open;
                 true
             }
             Msg::CopyPassword(idx) => {
-                if let Page::DisplayPasswords {accessible_password, generated_passwords, ..} = &mut self.page {
+                if let Page::DisplayPasswords {
+                    accessible_password,
+                    generated_passwords,
+                    ..
+                } = &mut self.page
+                {
                     if idx <= *accessible_password {
                         let document = window().unwrap().document().unwrap();
                         let element = document.create_element("textarea").unwrap();
                         element.set_attribute("readonly", "").unwrap();
-                        element.set_attribute("style", "position: absolute; left: -9999px").unwrap();
-    
+                        element
+                            .set_attribute("style", "position: absolute; left: -9999px")
+                            .unwrap();
+
                         let element: HtmlTextAreaElement = element.dyn_into().unwrap();
                         let document: HtmlDocument = document.dyn_into().unwrap();
                         let body = document.body().unwrap();
@@ -380,22 +529,69 @@ impl Component for Model {
                     }
                 }
                 true
-            },
+            }
             Msg::Back => {
                 self.messages = Vec::new();
                 match &self.page {
-                    Page::EnterMasterPassword{..} => (),
-                    Page::EnterUrl{..} => self.page = Page::EnterMasterPassword{how_to_get_mp: false, how_does_it_work: false},
-                    Page::DisplayPasswords{master_password, ..} => self.page = Page::EnterUrl{master_password: master_password.clone()},
-                    Page::Sorry(_) => self.page = Page::EnterMasterPassword {how_to_get_mp: false, how_does_it_work: false},
+                    Page::EnterMasterPassword { .. } => (),
+                    Page::EnterUrl { .. } => {
+                        self.page = Page::EnterMasterPassword {
+                            how_to_get_mp: false,
+                            how_does_it_work: false,
+                        }
+                    }
+                    Page::DisplayPasswords {
+                        master_password, ..
+                    } => {
+                        self.page = Page::EnterUrl {
+                            master_password: master_password.clone(),
+                        }
+                    }
+                    Page::Sorry(_) => {
+                        self.page = Page::EnterMasterPassword {
+                            how_to_get_mp: false,
+                            how_does_it_work: false,
+                        }
+                    }
                 }
                 true
             }
-            Msg::InputMasterPassword(password) => {
-                self.keylogger_protector.handle_input(password)
-            }
+            Msg::InputMasterPassword(password) => self.keylogger_protector.handle_input(password),
             Msg::ChangePanels(how_does_it_work, how_to_get_mp) => {
-                self.page = Page::EnterMasterPassword {how_does_it_work, how_to_get_mp };
+                self.page = Page::EnterMasterPassword {
+                    how_does_it_work,
+                    how_to_get_mp,
+                };
+                true
+            }
+            Msg::PslResponse { host, result } => {
+                if let Page::DisplayPasswords {
+                    domain,
+                    host: expected_host,
+                    generated_passwords,
+                    master_password,
+                    ..
+                } = &mut self.page
+                {
+                    log!("got answer");
+                    if host == *expected_host {
+                        match result {
+                            Ok(checked_domain) => *domain = Domain::Checked(checked_domain),
+                            Err(e) => domain.set_uncheckable(e),
+                        }
+
+                        *generated_passwords = [
+                            generate_password(&master_password, domain.as_ref(), true, false, true),
+                            generate_password(&master_password, domain.as_ref(), true, false, false),
+                            generate_password(&master_password, domain.as_ref(), true, true, true),
+                            generate_password(&master_password, domain.as_ref(), false, false, true),
+                            generate_password(&master_password, domain.as_ref(), false, false, false),
+                            generate_password(&master_password, domain.as_ref(), false, true, true),
+                        ];
+                    } else {
+                        log!("Host changed...");
+                    }
+                }
                 true
             }
         }
@@ -407,8 +603,12 @@ impl Component for Model {
 
     fn view(&self) -> Html {
         let mut messages = self.messages.iter().collect::<Vec<&Message>>();
-        messages.append(&mut self.keylogger_protector.get_messages(self.settings_open, &self.page));
-        let messages = messages.iter().map(|message|message.view());
+        messages.append(
+            &mut self
+                .keylogger_protector
+                .get_messages(self.settings_open, &self.page),
+        );
+        let messages = messages.iter().map(|message| message.view());
 
         if self.settings_open {
             return html! {
@@ -440,7 +640,10 @@ impl Component for Model {
         // TODO <a target="_blank" href="https://icones8.fr/icons/set/settings">Paramètres icon</a> icon by <a target="_blank" href="https://icones8.fr">Icons8</a>
 
         match &self.page {
-            Page::EnterMasterPassword{how_does_it_work, how_to_get_mp} => {
+            Page::EnterMasterPassword {
+                how_does_it_work,
+                how_to_get_mp,
+            } => {
                 let how_does_it_work: bool = *how_does_it_work;
                 let how_to_get_mp: bool = *how_to_get_mp;
                 html! {
@@ -509,8 +712,8 @@ impl Component for Model {
                         }
                     </main>
                 }
-            },
-            Page::EnterUrl {..} => {
+            }
+            Page::EnterUrl { .. } => {
                 html! {
                     <main>
                         {for messages}
@@ -528,13 +731,22 @@ impl Component for Model {
                         <button class="big_button" onclick=self.link.callback(|_| Msg::Back)>{ "Back" }</button>
                     </main>
                 }
-            },
-            Page::DisplayPasswords {show_more: false, ..} => {
+            }
+            Page::DisplayPasswords {
+                domain, show_more: false, ..
+            } => {
                 html! {
                     <main>
                         {for messages}
+                        {
+                            match domain {
+                                Domain::Checking(provisory_domain) => html! {{Message::Warning(format!("The domain {} may not be valid.", provisory_domain)).view()}},
+                                Domain::Checked(domain) => html! {},
+                                Domain::Uncheckable(provisory_domain, error) => html! {{Message::Warning(format!("The domain {} may not be valid as the program was unable to check it (check network) (error message: {}).", provisory_domain, error)).view()}},
+                            }
+                        }
                         <img id="settings" src="parameters.png" onclick=self.link.callback(|_| Msg::Settings)/>
-                        {"Press the button to copy your password."}<br/>
+                        {"Press the button to copy your password for "}<a href=domain.as_ref()>{domain.as_ref()}</a>{"."}<br/>
                         <br/>
                         <button class="big_button" onclick=self.link.callback(|_| Msg::CopyPassword(0))>{"Copy password"}</button><br/>
                         <br/>
@@ -545,8 +757,12 @@ impl Component for Model {
                         <button class="big_button" onclick=self.link.callback(|_| Msg::Back)>{ "Back" }</button>
                     </main>
                 }
-            },
-            Page::DisplayPasswords {show_more: true, accessible_password, ..} => {
+            }
+            Page::DisplayPasswords {
+                show_more: true,
+                accessible_password,
+                ..
+            } => {
                 let mut buttons = Vec::new();
                 for idx in 0..6 {
                     buttons.push(if *accessible_password >= idx {
@@ -560,7 +776,7 @@ impl Component for Model {
                             <div><button class="big_button disabled_button">{"Try the password above"}</button><br/><br/></div>
                         }
                     });
-                };
+                }
                 html! {
                     <main>
                         {for messages}
@@ -582,7 +798,7 @@ impl Component for Model {
                         <button class="big_button" onclick=self.link.callback(|_| Msg::Back)>{ "Back" }</button>
                     </main>
                 }
-            },
+            }
             Page::Sorry(message) => {
                 html! {
                     <main id="sorry">

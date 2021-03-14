@@ -10,6 +10,8 @@ sha3 = "0.9"
 hex = "0.4"
 string-tools = "0.1"
 wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+js-sys = "0.3"
 
 [profile.release]
 lto = true
@@ -26,4 +28,5 @@ features = [
     "Permissions",
     "Navigator",
     "Crypto",
+    "Url",
 ]
