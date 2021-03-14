@@ -9,11 +9,11 @@ use yew::services::storage::{Area, StorageService};
 
 #[macro_use]
 mod util;
+mod foldable_info;
 mod generation;
 mod message;
 mod psl;
 mod settings;
-mod foldable_info;
 use foldable_info::*;
 use generation::*;
 use message::*;
@@ -257,18 +257,14 @@ impl Component for Model {
             Msg::Back => {
                 match &self.page {
                     Page::EnterMasterPassword { .. } => (),
-                    Page::EnterUrl { .. } => {
-                        self.page = Page::EnterMasterPassword
-                    }
+                    Page::EnterUrl { .. } => self.page = Page::EnterMasterPassword,
                     Page::DisplayPasswords { master_password, .. } => {
                         self.page = Page::EnterUrl {
                             master_password: master_password.clone(),
                             master_password_check: MasterPasswordCheck::Checked,
                         }
                     }
-                    Page::Sorry(_) => {
-                        self.page = Page::EnterMasterPassword
-                    }
+                    Page::Sorry(_) => self.page = Page::EnterMasterPassword,
                 }
                 true
             }
