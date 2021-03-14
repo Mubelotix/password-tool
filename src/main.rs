@@ -12,6 +12,8 @@ use yew::services::storage::{Area, StorageService};
 mod util;
 mod psl;
 mod settings;
+mod message;
+use message::*;
 use settings::*;
 use psl::*;
 use util::*;
@@ -162,6 +164,13 @@ fn generate_password(
 }
 
 #[derive(PartialEq)]
+pub enum MasterPasswordCheck {
+    Checked,
+    Missing,
+    Unchecked,
+}
+
+#[derive(PartialEq)]
 pub enum Page {
     EnterMasterPassword {
         how_does_it_work: bool,
@@ -169,6 +178,7 @@ pub enum Page {
     },
     EnterUrl {
         master_password: String,
+        master_password_check: MasterPasswordCheck,
     },
     DisplayPasswords {
         master_password: String,
@@ -181,55 +191,8 @@ pub enum Page {
     Sorry(String),
 }
 
-#[derive(PartialEq)]
-pub enum Message {
-    Success(String),
-    Info(String),
-    Warning(String),
-    Danger(String),
-}
-
-impl Message {
-    fn view(&self) -> Html {
-        match self {
-            Message::Success(message) => {
-                html! {
-                    <p class="success_message">
-                        <b>{"Success: "}</b>
-                        {message}
-                    </p>
-                }
-            }
-            Message::Info(message) => {
-                html! {
-                    <p class="info_message">
-                        <b>{"Info: "}</b>
-                        {message}
-                    </p>
-                }
-            }
-            Message::Warning(message) => {
-                html! {
-                    <p class="warning_message">
-                        <b>{"Warning: "}</b>
-                        {message}
-                    </p>
-                }
-            }
-            Message::Danger(message) => {
-                html! {
-                    <p class="danger_message">
-                        <b>{"Danger: "}</b>
-                        {message}
-                    </p>
-                }
-            }
-        }
-    }
-}
 
 pub struct Model {
-    messages: Vec<Message>,
     link: Rc<ComponentLink<Self>>,
     settings: Settings,
     settings_open: bool,
@@ -254,7 +217,6 @@ impl Component for Model {
     type Message = Msg;
     type Properties = ();
     fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
-        let messages = Vec::new();
         let link = Rc::new(link);
         let settings = Settings::load(Rc::clone(&link));
         let mut keylogger_protector = KeyloggerProtector::new();
@@ -263,7 +225,6 @@ impl Component for Model {
         }
 
         Self {
-            messages,
             link: Rc::clone(&link),
             page: Page::EnterMasterPassword {
                 how_does_it_work: false,
@@ -278,7 +239,6 @@ impl Component for Model {
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
             Msg::Next => {
-                self.messages = Vec::new();
                 match &self.page {
                     Page::EnterMasterPassword { .. } => {
                         let master_password = window()
@@ -300,20 +260,16 @@ impl Component for Model {
                             StorageService::new(Area::Local).expect("storage unavailable");
                         let last: Result<String, _> = storage.restore(&hashed_password);
 
-                        if last.is_err() && self.settings.store_hash {
-                            self.messages.push(Message::Danger(String::from("This master password has never been seen on this computer. Only continue if you are sure that the password is correct.")));
-                        } else if !self.settings.store_hash {
-                            self.messages.push(Message::Warning(String::from("This master password has not been verified. (disabled in your parameters)")));
-                        } else if last.is_ok() {
-                            self.messages.push(Message::Success(String::from(
-                                "Your master password is correct.",
-                            )));
-                        }
+                        let master_password_check = match (last.is_ok(), self.settings.store_hash) {
+                            (true, _) => MasterPasswordCheck::Checked,
+                            (false, true) => MasterPasswordCheck::Missing,
+                            (false, false) => MasterPasswordCheck::Unchecked,
+                        };
 
-                        self.page = Page::EnterUrl { master_password };
+                        self.page = Page::EnterUrl { master_password, master_password_check };
                         true
                     }
-                    Page::EnterUrl { master_password } => {
+                    Page::EnterUrl { master_password, .. } => {
                         let url = window()
                             .unwrap()
                             .document()
@@ -325,10 +281,6 @@ impl Component for Model {
                             .value();
 
                         let host: String = if let Ok(url) = Url::new(&url) {
-                            self.messages.push(Message::Success(format!(
-                                "The password for the domain {} has been generated successfully.",
-                                url.host()
-                            )));
                             url.host()
                         } else {
                             url
@@ -405,7 +357,6 @@ impl Component for Model {
                 }
             }
             Msg::Settings => {
-                self.messages = Vec::new();
                 if self.settings_open {
                     let window = window().unwrap();
                     let document = window.document().unwrap();
@@ -434,10 +385,6 @@ impl Component for Model {
                     {
                         self.keylogger_protector.disable();
                     }
-                } else {
-                    self.messages.push(Message::Warning(String::from(
-                        "The settings are shared with every users.",
-                    )));
                 }
                 self.settings_open = !self.settings_open;
                 true
@@ -475,7 +422,6 @@ impl Component for Model {
                 true
             }
             Msg::Back => {
-                self.messages = Vec::new();
                 match &self.page {
                     Page::EnterMasterPassword { .. } => (),
                     Page::EnterUrl { .. } => {
@@ -489,6 +435,7 @@ impl Component for Model {
                     } => {
                         self.page = Page::EnterUrl {
                             master_password: master_password.clone(),
+                            master_password_check: MasterPasswordCheck::Checked,
                         }
                     }
                     Page::Sorry(_) => {
@@ -546,15 +493,7 @@ impl Component for Model {
     }
 
     fn view(&self) -> Html {
-        let mut messages = self.messages.iter().collect::<Vec<&Message>>();
-        messages.append(
-            &mut self
-                .keylogger_protector
-                .get_messages(self.settings_open, &self.page),
-        );
-        let messages = messages.iter().map(|message| message.view());
-
-        if self.settings_open {
+if self.settings_open {
             return self.settings.render();
         }
 
@@ -571,7 +510,7 @@ impl Component for Model {
                     <main>
                         <img id="settings" src="parameters.png" onclick=self.link.callback(|_| Msg::Settings)/>
                         {"Welcome!"}<br />
-                        {for messages}
+                        {self.keylogger_protector.render()}
                         <br />
                         <div class="input_container">
                             <input class="big-input" type="password" id="password_input" placeholder="Password" required=true oninput=self.link.callback(|data: InputData| Msg::InputMasterPassword(data.value))/>
@@ -634,10 +573,20 @@ impl Component for Model {
                     </main>
                 }
             }
-            Page::EnterUrl { .. } => {
+            Page::EnterUrl { master_password_check, .. } => {
                 html! {
                     <main>
-                        {for messages}
+                        {match master_password_check {
+                            MasterPasswordCheck::Checked => html! {
+                                <Message level="success">{"Your master password is correct."}</Message>
+                            },
+                            MasterPasswordCheck::Unchecked => html! {
+                                <Message level="warning">{"Your master password is not checked (see settings)."}</Message>
+                            },
+                            MasterPasswordCheck::Missing => html! {
+                                <Message level="danger">{"Your master password seems wrong as it was never used on this computer before."}</Message>
+                            },
+                            }}
                         <img id="settings" src="parameters.png" onclick=self.link.callback(|_| Msg::Settings)/>
                         {"Enter the URL of the website on which you want to get a password."}<br />
                         <br />
@@ -658,12 +607,18 @@ impl Component for Model {
             } => {
                 html! {
                     <main>
-                        {for messages}
                         {
                             match domain {
-                                Domain::Checking(provisory_domain) => html! {{Message::Warning(format!("The domain {} may not be valid.", provisory_domain)).view()}},
+                                Domain::Checking(provisory_domain) => html! {
+                                    <Message level="warning">
+                                        {format!("The domain {} may not be valid.", provisory_domain)}
+                                    </Message>
+                                },
                                 Domain::Checked(domain) => html! {},
-                                Domain::Uncheckable(provisory_domain, error) => html! {{Message::Warning(format!("The domain {} may not be valid as the program was unable to check it (check network) (error message: {}).", provisory_domain, error)).view()}},
+                                Domain::Uncheckable(provisory_domain, error) => html! {
+                                    <Message level="warning">
+                                        {format!("The domain {} may not be valid as the program was unable to check it (check network) (error message: {}).", provisory_domain, error)}
+                                    </Message>},
                             }
                         }
                         <img id="settings" src="parameters.png" onclick=self.link.callback(|_| Msg::Settings)/>
@@ -700,7 +655,6 @@ impl Component for Model {
                 }
                 html! {
                     <main>
-                        {for messages}
                         <img id="settings" src="parameters.png" onclick=self.link.callback(|_| Msg::Settings)/>
                         {"Try every password of this list in the correct order."}<br/>
                         <br/>
@@ -709,7 +663,11 @@ impl Component for Model {
                         }
                         {
                             if *accessible_password > 5 {
-                                Message::Info(String::from("If none of these passwords above is working and you are trying to sign up, please find a password by yourself. You can send me an email (at mubelotix@gmail.com) to report the website, and I will see if I can do something. This website is weakly configured, and I can't do anything for that. If you are trying to sign in, either you didn't enter the correct password or the correct URL, or you created a password by yourself on this website.")).view()
+                                html! {
+                                    <Message level="info">
+                                        {"If none of these passwords above is working and you are trying to sign up, please find a password by yourself. You can send me an email (at mubelotix@gmail.com) to report the website, and I will see if I can do something. This website is weakly configured, and I can't do anything for that. If you are trying to sign in, either you didn't enter the correct password or the correct URL, or you created a password by yourself on this website."}
+                                    </Message>
+                                }
                             } else {
                                 html!{}
                             }

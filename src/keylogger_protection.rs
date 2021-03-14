@@ -1,11 +1,12 @@
-use crate::{Message, util::{get_random, PasswordSystemComponent}, Page};
+use crate::{message::Message, util::get_random};
 use wasm_bindgen::JsCast;
 use web_sys::{window, HtmlInputElement};
+use yew::prelude::*;
 
 #[derive(PartialEq)]
 pub enum KeyloggerProtector {
     Disabled,
-    Enabled(bool, usize, String, Message)
+    Enabled(bool, usize, String, String)
 }
 
 impl KeyloggerProtector {
@@ -17,9 +18,9 @@ impl KeyloggerProtector {
         let is_password = get_random(1) == 0;
         let remaining = get_random(2) as usize + 1;
         let message = if is_password {
-            Message::Info(format!("Press {} keys entering your password. (keylogger protection)", remaining))
+            format!("Press {} keys entering your password. (keylogger protection)", remaining)
         } else {
-            Message::Warning(format!("Press {} random keys similar to the keys you need to press to write your password. (keylogger protection)", remaining))
+            format!("Press {} random keys similar to the keys you need to press to write your password. (keylogger protection)", remaining)
         };
         let value = match window().map(|w| w.document().map(|d| d.get_element_by_id("password_input").map(|e| e.dyn_into::<HtmlInputElement>().map(|e| e.value())))) {
             Some(Some(Some(Ok(value)))) => value,
@@ -65,9 +66,9 @@ impl KeyloggerProtector {
                 }
 
                 *message = if *is_password {
-                    Message::Info(format!("Press {} keys entering your password. (keylogger protection)", remaining))
+                    format!("Press {} keys entering your password. (keylogger protection)", remaining)
                 } else {
-                    Message::Warning(format!("Press {} random keys similar to the keys you need to press to write your password. (keylogger protection)", remaining))
+                    format!("Press {} random keys similar to the keys you need to press to write your password. (keylogger protection)", remaining)
                 };
                 true
             },
@@ -76,15 +77,15 @@ impl KeyloggerProtector {
     }
 }
 
-impl PasswordSystemComponent for KeyloggerProtector {
-    fn get_messages(&self, settings_open: bool, page: &Page) -> Vec<&Message> {
-        if !settings_open && matches!(page, Page::EnterMasterPassword{..}) {
-            match self {
-                KeyloggerProtector::Enabled(_,_,_, message) => vec![&message],
-                KeyloggerProtector::Disabled => Vec::new()
-            }
-        } else {
-            Vec::new()
+impl Renderable for KeyloggerProtector {
+    fn render(&self) -> Html {
+        match self {
+            KeyloggerProtector::Enabled(is_password,_,_, message) => html! {
+                <Message level=if *is_password {"info"} else {"warning"}>
+                    {message}
+                </Message>
+            },
+            KeyloggerProtector::Disabled => html! {}
         }
     }
 }

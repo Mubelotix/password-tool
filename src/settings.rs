@@ -1,4 +1,4 @@
-use crate::{Model, Msg};
+use crate::{Model, Msg, message::Message};
 use std::rc::Rc;
 use yew::prelude::*;
 use yew::services::storage::{Area, StorageService};
@@ -52,6 +52,10 @@ impl Renderable for Settings {
         html! {
             <main>
                 {"Settings:"}<br />
+                <br/>
+                <Message level="warning">
+                    {"Settings can be modified by anyone with access to this computer."}
+                </Message>
                 <br/>
                 <label class="checkbox">
                     <input type="checkbox" name="check" value="check" checked=self.store_hash id="settings-store-hash"/>
