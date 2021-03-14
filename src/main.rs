@@ -342,8 +342,7 @@ impl Component for Model {
                             <input class="big-input" type="password" id="password_input" placeholder="Password" required=true oninput=self.link.callback(|data: InputData| Msg::InputMasterPassword(data.value)) onkeypress=self.link.callback(|event: KeyboardEvent| { if event.code() == "Enter" { Msg::Next } else { Msg::Noop }
                             })/>
                             <label class="label" for="password_input">{"Password"}</label>
-                        </div>
-                        <br />
+                        </div><br />
                         <br />
                         <button class="big_button" onclick=self.link.callback(|_| Msg::Next)>{ "Next" }</button><br />
                         <br />
@@ -379,8 +378,7 @@ impl Component for Model {
                         <div class="input_container">
                             <input class="big-input" type="text" id="url_input" value="" placeholder="URL" required=true onkeypress=self.link.callback(|event: KeyboardEvent| { if event.code() == "Enter" { Msg::Next } else { Msg::Noop }}) />
                             <label class="label" for="url_input">{"URL"}</label>
-                        </div>
-                        <br />
+                        </div><br />
                         <br />
                         <button class="big_button" onclick=self.link.callback(|_| Msg::Next)>{ "Next" }</button><br />
                         <br />
@@ -419,7 +417,8 @@ impl Component for Model {
                     buttons.push(if *accessible_password >= idx {
                         html! {
                             <div>
-                                <button class="big_button" onclick=self.link.callback(move |_| Msg::CopyPassword(idx))>{format!("Password {}", idx)}</button><br/><br/>
+                                <button class="big_button" onclick=self.link.callback(move |_| Msg::CopyPassword(idx))>{format!("Password {}", idx)}</button><br/>
+                                <br/>
                             </div>
                         }
                     } else {
