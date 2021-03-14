@@ -37,10 +37,7 @@ impl Settings {
     pub fn save(&self) -> bool {
         if let Ok(mut storage) = StorageService::new(Area::Local) {
             storage.store("settings:store_hash", Ok(self.store_hash.to_string()));
-            storage.store(
-                "settings:keylogger_protection",
-                Ok(self.keylogger_protection.to_string()),
-            );
+            storage.store("settings:keylogger_protection", Ok(self.keylogger_protection.to_string()));
             return true;
         }
         false

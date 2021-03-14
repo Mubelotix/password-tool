@@ -33,11 +33,7 @@ impl Domain {
                         }),
                     };
                 });
-                Domain::Checking(format!(
-                    "{}.{}",
-                    parts.get(len - 2).unwrap(),
-                    parts.get(len - 1).unwrap()
-                ))
+                Domain::Checking(format!("{}.{}", parts.get(len - 2).unwrap(), parts.get(len - 1).unwrap()))
             }
         }
     }
@@ -63,10 +59,7 @@ pub async fn request_psl<'a>(host: String) -> Result<String, &'static str> {
 
     let window = web_sys::window().unwrap();
     let response = match JsFuture::from(window.fetch_with_str_and_init(
-        &format!(
-            "https://dns.google/resolve?name={}.query.publicsuffix.zone&type=PTR",
-            host
-        ),
+        &format!("https://dns.google/resolve?name={}.query.publicsuffix.zone&type=PTR", host),
         &request,
     ))
     .await
@@ -110,9 +103,7 @@ pub async fn request_psl<'a>(host: String) -> Result<String, &'static str> {
     }
 
     let suffix = get(&answers.get(1), &"data".into()).map_err(|_| "No data in second answer.")?;
-    let mut suffix = suffix
-        .as_string()
-        .ok_or("Data is not a string in second answer.")?;
+    let mut suffix = suffix.as_string().ok_or("Data is not a string in second answer.")?;
     if !suffix.ends_with('.') || suffix.len() <= 1 {
         return Err("Invalid response data.");
     }
@@ -121,10 +112,7 @@ pub async fn request_psl<'a>(host: String) -> Result<String, &'static str> {
     if !host.ends_with(&suffix) {
         return Err("Response data does not match request.");
     }
-    let prefix = host[..host.len() - (suffix.len() + 1)]
-        .split('.')
-        .last()
-        .unwrap_or("");
+    let prefix = host[..host.len() - (suffix.len() + 1)].split('.').last().unwrap_or("");
 
     Ok(host[host.len() - (prefix.len() + 1 + suffix.len())..].to_string())
 }

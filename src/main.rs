@@ -132,9 +132,7 @@ impl Component for Model {
                     };
                     true
                 }
-                Page::EnterUrl {
-                    master_password, ..
-                } => {
+                Page::EnterUrl { master_password, .. } => {
                     let url = window()
                         .unwrap()
                         .document()
@@ -149,17 +147,12 @@ impl Component for Model {
                         return false;
                     }
 
-                    let host: String = if let Ok(url) = Url::new(&url) {
-                        url.host()
-                    } else {
-                        url
-                    };
+                    let host: String = if let Ok(url) = Url::new(&url) { url.host() } else { url };
 
                     let domain = Domain::check(Rc::clone(&self.link), host.clone());
 
                     if self.settings.store_hash {
-                        let mut storage =
-                            StorageService::new(Area::Local).expect("storage unavailable");
+                        let mut storage = StorageService::new(Area::Local).expect("storage unavailable");
                         let mut hasher = Sha3_512::new();
                         hasher.update(format!("{}password", master_password));
                         let result = hasher.finalize();
@@ -227,12 +220,9 @@ impl Component for Model {
                     self.settings.keylogger_protection = keylogger_protection;
                     self.settings.save();
 
-                    if self.settings.keylogger_protection && !self.keylogger_protector.is_enabled()
-                    {
+                    if self.settings.keylogger_protection && !self.keylogger_protector.is_enabled() {
                         self.keylogger_protector.enable();
-                    } else if !self.settings.keylogger_protection
-                        && self.keylogger_protector.is_enabled()
-                    {
+                    } else if !self.settings.keylogger_protection && self.keylogger_protector.is_enabled() {
                         self.keylogger_protector.disable();
                     }
                 }
@@ -250,9 +240,7 @@ impl Component for Model {
                         let document = window().unwrap().document().unwrap();
                         let element = document.create_element("textarea").unwrap();
                         element.set_attribute("readonly", "").unwrap();
-                        element
-                            .set_attribute("style", "position: absolute; left: -9999px")
-                            .unwrap();
+                        element.set_attribute("style", "position: absolute; left: -9999px").unwrap();
 
                         let element: HtmlTextAreaElement = element.dyn_into().unwrap();
                         let document: HtmlDocument = document.dyn_into().unwrap();
@@ -280,9 +268,7 @@ impl Component for Model {
                             how_does_it_work: false,
                         }
                     }
-                    Page::DisplayPasswords {
-                        master_password, ..
-                    } => {
+                    Page::DisplayPasswords { master_password, .. } => {
                         self.page = Page::EnterUrl {
                             master_password: master_password.clone(),
                             master_password_check: MasterPasswordCheck::Checked,
@@ -323,28 +309,10 @@ impl Component for Model {
 
                         *generated_passwords = [
                             generate_password(&master_password, domain.as_ref(), true, false, true),
-                            generate_password(
-                                &master_password,
-                                domain.as_ref(),
-                                true,
-                                false,
-                                false,
-                            ),
+                            generate_password(&master_password, domain.as_ref(), true, false, false),
                             generate_password(&master_password, domain.as_ref(), true, true, true),
-                            generate_password(
-                                &master_password,
-                                domain.as_ref(),
-                                false,
-                                false,
-                                true,
-                            ),
-                            generate_password(
-                                &master_password,
-                                domain.as_ref(),
-                                false,
-                                false,
-                                false,
-                            ),
+                            generate_password(&master_password, domain.as_ref(), false, false, true),
+                            generate_password(&master_password, domain.as_ref(), false, false, false),
                             generate_password(&master_password, domain.as_ref(), false, true, true),
                         ];
                     } else {
@@ -444,8 +412,7 @@ impl Component for Model {
                 }
             }
             Page::EnterUrl {
-                master_password_check,
-                ..
+                master_password_check, ..
             } => {
                 html! {
                     <main>

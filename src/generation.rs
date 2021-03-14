@@ -1,12 +1,6 @@
 use sha3::{Digest, Sha3_512};
 
-pub fn generate_password(
-    master_password: &str,
-    domain: &str,
-    big: bool,
-    only_numbers: bool,
-    special_chars: bool,
-) -> String {
+pub fn generate_password(master_password: &str, domain: &str, big: bool, only_numbers: bool, special_chars: bool) -> String {
     let password_size = if big { 50 } else { 16 };
 
     let mut hasher = Sha3_512::new();

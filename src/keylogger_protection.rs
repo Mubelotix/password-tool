@@ -18,12 +18,12 @@ impl KeyloggerProtector {
         let is_password = get_random(1) == 0;
         let remaining = get_random(2) as usize + 1;
         let message = if is_password {
+            format!("Press {} keys entering your password. (keylogger protection)", remaining)
+        } else {
             format!(
-                "Press {} keys entering your password. (keylogger protection)",
+                "Press {} random keys similar to the keys you need to press to write your password. (keylogger protection)",
                 remaining
             )
-        } else {
-            format!("Press {} random keys similar to the keys you need to press to write your password. (keylogger protection)", remaining)
         };
         let value = match window().map(|w| {
             w.document().map(|d| {
@@ -81,10 +81,7 @@ impl KeyloggerProtector {
                 }
 
                 *message = if *is_password {
-                    format!(
-                        "Press {} keys entering your password. (keylogger protection)",
-                        remaining
-                    )
+                    format!("Press {} keys entering your password. (keylogger protection)", remaining)
                 } else {
                     format!("Press {} random keys similar to the keys you need to press to write your password. (keylogger protection)", remaining)
                 };
