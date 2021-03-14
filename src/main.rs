@@ -1,4 +1,5 @@
 #![recursion_limit = "1024"]
+#![allow(clippy::large_enum_variant)]
 use sha3::{Digest, Sha3_512};
 use std::rc::Rc;
 use wasm_bindgen::JsCast;
@@ -47,7 +48,6 @@ pub enum Page {
     },
     Sorry(String),
 }
-
 
 pub struct Model {
     link: Rc<ComponentLink<Self>>,
