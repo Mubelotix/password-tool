@@ -336,6 +336,7 @@ impl Component for Model {
                     <main>
                         <img id="settings" src="parameters.png" onclick=self.link.callback(|_| Msg::Settings)/>
                         {"Welcome!"}<br />
+                        <Message level="danger">{"This is a testing message which should not be visible to users."}</Message>
                         {self.keylogger_protector.render()}
                         <br />
                         <div class="input_container">

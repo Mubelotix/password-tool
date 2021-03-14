@@ -172,33 +172,37 @@ main {
 }
 
 .warning_message {
+    margin: .4rem 0;
     color: #8a6d3b;
-    background-color: #fcf8e3;
-    border: 1px solid #faebcc;
-    padding: .5rem;
+    background-color: #FDF9E4;
+    border: 1px solid #F6E4C0;
+    padding: .4rem;
     border-radius: 5px;
 }
 
 .success_message {
+    margin: .4rem 0;
     color: #3c763d;
-    background-color: #dff0d8;
-    border: 1px solid #d6e9c6;
-    padding: .5rem;
+    background-color: #EFF6EC;
+    border: 1px solid #D5ECC3;
+    padding: .4rem;
     border-radius: 5px;
 }
 
 .info_message {
+    margin: .4rem 0;
     color: #31708f;
-    background-color: #d9edf7;
-    border: 1px solid #bce8f1;
-    padding: .5rem;
+    background-color: #E7F3F8;
+    border: 1px solid #BEEAF3;
+    padding: .4rem;
     border-radius: 5px;
 }
 
-.danger_message {
+.error_message {
+    margin: .4rem 0;
     color: #a94442;
-    background-color: #f2dede;
-    border: 1px solid #ebccd1;
-    padding: .5rem;
+    background-color: #FFE6E6;
+    border: 1px solid #EEC1C1;
+    padding: .4rem;
     border-radius: 5px;
 }

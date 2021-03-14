@@ -55,7 +55,7 @@ impl Component for Message {
             }
             "danger" => {
                 html! {
-                    <p class="danger_message">
+                    <p class="error_message">
                         <b>{"Danger: "}</b>
                         {self.props.children.clone()}
                     </p>
@@ -63,7 +63,7 @@ impl Component for Message {
             }
             "error" => {
                 html! {
-                    <p class="danger_message">
+                    <p class="error_message">
                         <b>{"Danger: "}</b>
                         {self.props.children.clone()}
                     </p>
