@@ -11,6 +11,8 @@ use yew::services::storage::{Area, StorageService};
 #[macro_use]
 mod util;
 mod psl;
+mod settings;
+use settings::*;
 use psl::*;
 use util::*;
 mod keylogger_protection;
@@ -226,53 +228,7 @@ impl Message {
     }
 }
 
-struct Settings {
-    store_hash: bool,
-    disallow_invalid_domains: bool,
-    keylogger_protection: bool,
-}
-
-impl Settings {
-    fn load() -> Option<Settings> {
-        let storage = StorageService::new(Area::Local).ok()?;
-
-        Some(Settings {
-            store_hash: storage
-                .restore::<Result<String, _>>("settings:store_hash")
-                .ok()?
-                .parse()
-                .ok()?,
-            disallow_invalid_domains: storage
-                .restore::<Result<String, _>>("settings:disallow_invalid_domains")
-                .ok()?
-                .parse()
-                .ok()?,
-            keylogger_protection: storage
-                .restore::<Result<String, _>>("settings:keylogger_protection")
-                .ok()?
-                .parse()
-                .ok()?,
-        })
-    }
-
-    fn save(&self) -> bool {
-        if let Ok(mut storage) = StorageService::new(Area::Local) {
-            storage.store("settings:store_hash", Ok(self.store_hash.to_string()));
-            storage.store(
-                "settings:disallow_invalid_domains",
-                Ok(self.disallow_invalid_domains.to_string()),
-            );
-            storage.store(
-                "settings:keylogger_protection",
-                Ok(self.keylogger_protection.to_string()),
-            );
-            return true;
-        }
-        false
-    }
-}
-
-struct Model {
+pub struct Model {
     messages: Vec<Message>,
     link: Rc<ComponentLink<Self>>,
     settings: Settings,
@@ -281,7 +237,7 @@ struct Model {
     page: Page,
 }
 
-enum Msg {
+pub enum Msg {
     Next,
     Back,
     PslResponse {
@@ -299,11 +255,8 @@ impl Component for Model {
     type Properties = ();
     fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
         let messages = Vec::new();
-        let settings = Settings::load().unwrap_or(Settings {
-            store_hash: true,
-            disallow_invalid_domains: true,
-            keylogger_protection: false,
-        });
+        let link = Rc::new(link);
+        let settings = Settings::load(Rc::clone(&link));
         let mut keylogger_protector = KeyloggerProtector::new();
         if settings.keylogger_protection {
             keylogger_protector.enable();
@@ -311,7 +264,7 @@ impl Component for Model {
 
         Self {
             messages,
-            link: Rc::new(link),
+            link: Rc::clone(&link),
             page: Page::EnterMasterPassword {
                 how_does_it_work: false,
                 how_to_get_mp: false,
@@ -462,12 +415,6 @@ impl Component for Model {
                         .dyn_into::<HtmlInputElement>()
                         .unwrap()
                         .checked();
-                    let disallow_invalid_domains = document
-                        .get_element_by_id("settings-disallow-invalid-domains")
-                        .unwrap()
-                        .dyn_into::<HtmlInputElement>()
-                        .unwrap()
-                        .checked();
                     let keylogger_protection = document
                         .get_element_by_id("settings-keylogger-protection")
                         .unwrap()
@@ -475,11 +422,8 @@ impl Component for Model {
                         .unwrap()
                         .checked();
 
-                    self.settings = Settings {
-                        disallow_invalid_domains,
-                        store_hash,
-                        keylogger_protection,
-                    };
+                    self.settings.store_hash = store_hash;
+                    self.settings.keylogger_protection = keylogger_protection;
                     self.settings.save();
 
                     if self.settings.keylogger_protection && !self.keylogger_protector.is_enabled()
@@ -611,30 +555,7 @@ impl Component for Model {
         let messages = messages.iter().map(|message| message.view());
 
         if self.settings_open {
-            return html! {
-                <main>
-                    {"Settings:"}<br />
-                    {for messages}
-                    <br/>
-                    <label class="checkbox">
-                        <input type="checkbox" name="check" value="check" checked=self.settings.store_hash id="settings-store-hash"/>
-                        <span>{"Store a hash of my master password (very secure, recommended)"}</span>
-                    </label>
-                    <br/>
-                    <label class="checkbox">
-                        <input type="checkbox" name="check" value="check" checked=self.settings.disallow_invalid_domains  id="settings-disallow-invalid-domains"/>
-                        <span>{"Disallow invalid domains"}</span>
-                    </label>
-                    <br/>
-                    <label class="checkbox">
-                        <input type="checkbox" name="check" value="check" checked=self.settings.keylogger_protection  id="settings-keylogger-protection"/>
-                        <span>{"Keylogger protection"}</span>
-                    </label>
-                    <br/>
-                    <br/>
-                    <button class="big_button" onclick=self.link.callback(|_| Msg::Settings)>{ "Save" }</button><br />
-                </main>
-            };
+            return self.settings.render();
         }
 
         // TODO <a target="_blank" href="https://icones8.fr/icons/set/settings">Paramètres icon</a> icon by <a target="_blank" href="https://icones8.fr">Icons8</a>
