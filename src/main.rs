@@ -1,8 +1,6 @@
 #![recursion_limit = "1024"]
-use psl::request_psl;
 use sha3::{Digest, Sha3_512};
 use std::rc::Rc;
-use string_tools::{get_all_after, get_all_before};
 use wasm_bindgen::JsCast;
 use web_sys::*;
 use yew::prelude::*;
@@ -13,155 +11,14 @@ mod util;
 mod psl;
 mod settings;
 mod message;
+mod generation;
+use generation::*;
 use message::*;
 use settings::*;
 use psl::*;
 use util::*;
 mod keylogger_protection;
 use keylogger_protection::*;
-
-#[cfg(test)]
-mod test {
-    use super::extract_domain_name;
-    use super::generate_password;
-
-    #[test]
-    fn test_password_did_not_changed() {
-        assert_eq!(
-            generate_password("testing", "example.com", true, false, true),
-            "2d70dac574dbfa9aa025c3750657e70773d6b2a9b00f@*_BQF"
-        );
-    }
-
-    #[test]
-    fn url() {
-        assert_eq!(
-            &extract_domain_name("https://google.com").unwrap(),
-            "google.com"
-        );
-        assert_eq!(&extract_domain_name("google.com").unwrap(), "google.com");
-        assert_eq!(
-            &extract_domain_name("https://google.com/test").unwrap(),
-            "google.com"
-        );
-        assert_eq!(
-            &extract_domain_name("http://mubelotix.dev/passwords").unwrap(),
-            "mubelotix.dev"
-        );
-        assert_eq!(
-            &extract_domain_name("https://test.mubelotix.dev/index.html").unwrap(),
-            "mubelotix.dev"
-        );
-    }
-
-    #[test]
-    fn backward_compatibility_test() {
-        assert_eq!(
-            &generate_password("test", "unknown.unknown", false, false, false),
-            "00c7dfebc7943SOD"
-        );
-        assert_eq!(
-            &generate_password("test", "unknown.unknown", false, false, true),
-            "00c7dfebc769*_BQ"
-        );
-        assert_eq!(
-            &generate_password("test", "unknown.unknown", false, true, false),
-            "0199223235199105"
-        );
-        assert_eq!(
-            &generate_password("test", "unknown.unknown", false, true, true),
-            "0199223235199105"
-        );
-        assert_eq!(
-            &generate_password("test", "unknown.unknown", true, false, false),
-            "00c7dfebc769bc042ad64ed60d9447dcaeaf7e9cabef943SOD"
-        );
-        assert_eq!(
-            &generate_password("test", "unknown.unknown", true, false, true),
-            "00c7dfebc769bc042ad64ed60d9447dcaeaf7e9cabef@*_BQF"
-        );
-        assert_eq!(
-            &generate_password("test", "unknown.unknown", true, true, false),
-            "01992232351991051884422147821413148712201741751261"
-        );
-        assert_eq!(
-            &generate_password("test", "unknown.unknown", true, true, true),
-            "01992232351991051884422147821413148712201741751261"
-        );
-    }
-}
-
-fn extract_domain_name(mut url: &str) -> Option<String> {
-    url = if url.contains("://") {
-        get_all_after(url, "://")
-    } else {
-        url
-    };
-    let mut url = String::from(get_all_before(url, "/"));
-    let mut domain = String::new();
-
-    while !url.is_empty() && !url.ends_with('.') {
-        domain.insert(0, url.remove(url.len() - 1))
-    }
-
-    if !url.is_empty() && !domain.is_empty() {
-        domain.insert(0, '.');
-        url.remove(url.len() - 1);
-    } else {
-        return None;
-    }
-
-    while !url.is_empty() && !url.ends_with('.') {
-        domain.insert(0, url.remove(url.len() - 1))
-    }
-
-    Some(domain)
-}
-
-fn generate_password(
-    master_password: &str,
-    domain: &str,
-    big: bool,
-    only_numbers: bool,
-    special_chars: bool,
-) -> String {
-    let password_size = if big { 50 } else { 16 };
-
-    let mut hasher = Sha3_512::new();
-
-    let mut generated_password = master_password.to_string();
-    generated_password.push_str("35Pqfs6FeEf545fD54");
-    generated_password.push_str(domain);
-    hasher.update(generated_password);
-    let generated_password = hasher.finalize();
-
-    let mut generated_password: String = if !only_numbers {
-        if special_chars && !big {
-            hex::encode(generated_password[..password_size / 2 - 2].to_vec())
-        } else {
-            hex::encode(generated_password[..password_size / 2 - 3].to_vec())
-        }
-    } else {
-        let mut generated_password2 = String::new();
-        for n in generated_password {
-            generated_password2.push_str(&n.to_string());
-        }
-        let generated_password = generated_password2[..password_size].to_string();
-        return generated_password;
-    };
-
-    if special_chars {
-        if big {
-            generated_password.push_str("@*_BQF");
-        } else {
-            generated_password.push_str("*_BQ");
-        }
-    } else {
-        generated_password.push_str("943SOD");
-    }
-
-    generated_password
-}
 
 #[derive(PartialEq)]
 pub enum MasterPasswordCheck {
