@@ -396,7 +396,7 @@ impl Component for Model {
                     <main>
                         {domain.render()}
                         <img id="settings" src="parameters.png" onclick=self.link.callback(|_| Msg::Settings)/>
-                        {"Press the button to copy your password for "}<a href=domain.as_ref()>{domain.as_ref()}</a>{"."}<br/>
+                        {"Press the button to copy your password for "}<a href=format!("https://{}", domain.as_ref())>{domain.as_ref()}</a>{"."}<br/>
                         <br/>
                         <button class="big_button" onclick=self.link.callback(|_| Msg::CopyPassword(0))>{"Copy password"}</button><br/>
                         <br/>
