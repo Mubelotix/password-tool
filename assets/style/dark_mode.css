@@ -7,6 +7,19 @@
         --font-color: #eeeeee;
         --checkbox-background: #4c4e59;
         --faq-color: #1892f0;
+
+        --info-message-color: #88BEFF;
+        --info-message-background-color: #3F4766;
+        --info-message-border-color: #444D73;
+        --warning-message-color: #CDC19C;
+        --warning-message-background-color: #4D4D3C;
+        --warning-message-border-color: #5A5A41;
+        --success-message-color: #A7DCAC;
+        --success-message-background-color: #44544F;
+        --success-message-border-color: #49645A;
+        --error-message-color: #E6B8B6;
+        --error-message-background-color: #5A4645;
+        --error-message-border-color: #694E4D;
     }
 
     #settings {
