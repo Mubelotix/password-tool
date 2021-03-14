@@ -211,6 +211,7 @@ pub enum Msg {
     Settings,
     CopyPassword(usize),
     ChangePanels(bool, bool),
+    Noop,
 }
 
 impl Component for Model {
@@ -251,6 +252,10 @@ impl Component for Model {
                             .unwrap()
                             .value();
 
+                        if master_password.is_empty() {
+                            return false;
+                        }
+
                         let mut hasher = Sha3_512::new();
                         hasher.update(format!("{}password", master_password));
                         let result = hasher.finalize();
@@ -279,6 +284,10 @@ impl Component for Model {
                             .dyn_into::<HtmlInputElement>()
                             .unwrap()
                             .value();
+
+                        if url.is_empty() {
+                            return false;
+                        }
 
                         let host: String = if let Ok(url) = Url::new(&url) {
                             url.host()
@@ -485,6 +494,7 @@ impl Component for Model {
                 }
                 true
             }
+            Msg::Noop => false,
         }
     }
 
@@ -493,7 +503,7 @@ impl Component for Model {
     }
 
     fn view(&self) -> Html {
-if self.settings_open {
+        if self.settings_open {
             return self.settings.render();
         }
 
@@ -513,7 +523,8 @@ if self.settings_open {
                         {self.keylogger_protector.render()}
                         <br />
                         <div class="input_container">
-                            <input class="big-input" type="password" id="password_input" placeholder="Password" required=true oninput=self.link.callback(|data: InputData| Msg::InputMasterPassword(data.value))/>
+                            <input class="big-input" type="password" id="password_input" placeholder="Password" required=true oninput=self.link.callback(|data: InputData| Msg::InputMasterPassword(data.value)) onkeypress=self.link.callback(|event: KeyboardEvent| { if event.code() == "Enter" { Msg::Next } else { Msg::Noop }
+                            })/>
                             <label class="label" for="password_input">{"Password"}</label>
                         </div>
                         <br />
@@ -586,12 +597,12 @@ if self.settings_open {
                             MasterPasswordCheck::Missing => html! {
                                 <Message level="danger">{"Your master password seems wrong as it was never used on this computer before."}</Message>
                             },
-                            }}
+                        }}
                         <img id="settings" src="parameters.png" onclick=self.link.callback(|_| Msg::Settings)/>
                         {"Enter the URL of the website on which you want to get a password."}<br />
                         <br />
                         <div class="input_container">
-                            <input class="big-input" type="text" id="url_input" value="" placeholder="URL" required=true />
+                            <input class="big-input" type="text" id="url_input" value="" placeholder="URL" required=true onkeypress=self.link.callback(|event: KeyboardEvent| { if event.code() == "Enter" { Msg::Next } else { Msg::Noop }}) />
                             <label class="label" for="url_input">{"URL"}</label>
                         </div>
                         <br />
