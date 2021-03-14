@@ -13,6 +13,8 @@ mod generation;
 mod message;
 mod psl;
 mod settings;
+mod foldable_info;
+use foldable_info::*;
 use generation::*;
 use message::*;
 use psl::*;
@@ -30,10 +32,7 @@ pub enum MasterPasswordCheck {
 
 #[derive(PartialEq)]
 pub enum Page {
-    EnterMasterPassword {
-        how_does_it_work: bool,
-        how_to_get_mp: bool,
-    },
+    EnterMasterPassword,
     EnterUrl {
         master_password: String,
         master_password_check: MasterPasswordCheck,
@@ -67,7 +66,6 @@ pub enum Msg {
     InputMasterPassword(String),
     Settings,
     CopyPassword(usize),
-    ChangePanels(bool, bool),
     Noop,
 }
 
@@ -84,10 +82,7 @@ impl Component for Model {
 
         Self {
             link: Rc::clone(&link),
-            page: Page::EnterMasterPassword {
-                how_does_it_work: false,
-                how_to_get_mp: false,
-            },
+            page: Page::EnterMasterPassword,
             keylogger_protector,
             settings,
             settings_open: false,
@@ -263,10 +258,7 @@ impl Component for Model {
                 match &self.page {
                     Page::EnterMasterPassword { .. } => (),
                     Page::EnterUrl { .. } => {
-                        self.page = Page::EnterMasterPassword {
-                            how_to_get_mp: false,
-                            how_does_it_work: false,
-                        }
+                        self.page = Page::EnterMasterPassword
                     }
                     Page::DisplayPasswords { master_password, .. } => {
                         self.page = Page::EnterUrl {
@@ -275,22 +267,12 @@ impl Component for Model {
                         }
                     }
                     Page::Sorry(_) => {
-                        self.page = Page::EnterMasterPassword {
-                            how_to_get_mp: false,
-                            how_does_it_work: false,
-                        }
+                        self.page = Page::EnterMasterPassword
                     }
                 }
                 true
             }
             Msg::InputMasterPassword(password) => self.keylogger_protector.handle_input(password),
-            Msg::ChangePanels(how_does_it_work, how_to_get_mp) => {
-                self.page = Page::EnterMasterPassword {
-                    how_does_it_work,
-                    how_to_get_mp,
-                };
-                true
-            }
             Msg::PslResponse { host, result } => {
                 if let Page::DisplayPasswords {
                     domain,
@@ -337,12 +319,7 @@ impl Component for Model {
         // TODO <a target="_blank" href="https://icones8.fr/icons/set/settings">Paramètres icon</a> icon by <a target="_blank" href="https://icones8.fr">Icons8</a>
 
         match &self.page {
-            Page::EnterMasterPassword {
-                how_does_it_work,
-                how_to_get_mp,
-            } => {
-                let how_does_it_work: bool = *how_does_it_work;
-                let how_to_get_mp: bool = *how_to_get_mp;
+            Page::EnterMasterPassword => {
                 html! {
                     <main>
                         <img id="settings" src="parameters.png" onclick=self.link.callback(|_| Msg::Settings)/>
@@ -358,56 +335,23 @@ impl Component for Model {
                         <br />
                         <button class="big_button" onclick=self.link.callback(|_| Msg::Next)>{ "Next" }</button><br />
                         <br />
-                        {
-                            if how_does_it_work {
-                                html! {
-                                    <>
-                                    <br />
-                                    <h3 class="faq_question" onclick=self.link.callback(move |_| Msg::ChangePanels(false, how_to_get_mp))>{"How does it work? [reduce]"}</h3>
-                                    <p>
-                                        {"In opposition to any other password manager, this one will never store your passwords. Your passwords will be regenerated each time you need them. The generated passwords will never change, wherever and whenever you are. That means that you can get all your passwords on different devices without needing to synchronize or exchange any data. All your passwords will be generated from your master password to make them unique. They will also be different for every website. Thanks to a complex password generation, it is not possible to get your master password from a generated password. That means that if a website is compromised, and a generated password is stolen, the hacker will never be able to get your master password. Thanks to this design, this is the most secure password manager software in the world, as long as your master password remains strong and secret. "}
-                                    </p>
-                                    </>
+                        <FoldableInfo title="How does it work?">
+                            {"In opposition to any other password manager, this one will never store your passwords. Your passwords will be regenerated each time you need them. The generated passwords will never change, wherever and whenever you are. That means that you can get all your passwords on different devices without needing to synchronize or exchange any data. All your passwords will be generated from your master password to make them unique. They will also be different for every website. Thanks to a complex password generation, it is not possible to get your master password from a generated password. That means that if a website is compromised, and a generated password is stolen, the hacker will never be able to get your master password. Thanks to this design, this is the most secure password manager software in the world, as long as your master password remains strong and secret. "}
+                        </FoldableInfo>
+                        <br/>
+                        <FoldableInfo title="How can I get a master password?">
+                            {"Your master password will be the root of every generated password. It must be very strong because cracking your master password means cracking every generated password. It should be random."}
+                            {{
+                            let mut master_password = String::new();
+                            while master_password.len() < 14 { // only bytes char so its ok
+                                let number: u8 = get_random_between(32, 127);
+                                if (123..=126).contains(&number) || (91..=96).contains(&number) || (58..=64).contains(&number) || (32..=47).contains(&number) {
+                                    continue
                                 }
-                            } else {
-                                html! {
-                                    <><br />
-                                    <h3 class="faq_question" onclick=self.link.callback(move |_| Msg::ChangePanels(true, how_to_get_mp.clone()))>{"How does it work? [expand]"}</h3>
-                                    </>
-                                }
+                                master_password.push(number as char);
                             }
-                        }
-                        {
-                            if how_to_get_mp {
-                                let mut master_password = String::new();
-                                while master_password.len() < 14 { // only bytes char so its ok
-                                    let number: u8 = get_random_between(32, 127);
-                                    if (123..=126).contains(&number) || (91..=96).contains(&number) || (58..=64).contains(&number) || (32..=47).contains(&number) {
-                                        continue
-                                    }
-                                    master_password.push(number as char);
-                                }
-
-                                html! {
-                                    <>
-                                    <br />
-                                    <h3 class="faq_question" onclick=self.link.callback(move |_| Msg::ChangePanels(how_does_it_work.clone(), false))>{"How can I get a master password? [reduce]"}</h3>
-                                    <p>
-                                        {"Your master password will be the root of every generated password. It must be very strong because cracking your master password means cracking every generated password. It should be random."}
-                                    </p>
-                                    {
-                                        format!("Here is a master password generated just for you! {}", master_password)
-                                    }
-                                    </>
-                                }
-                            } else {
-                                html! {
-                                    <><br />
-                                    <h3 class="faq_question" onclick=self.link.callback(move |_| Msg::ChangePanels(how_does_it_work.clone(), true))>{"How can I get a master password? [expand]"}</h3>
-                                    </>
-                                }
-                            }
-                        }
+                            format!("Here is a master password generated just for you! {}", master_password)}}
+                        </FoldableInfo>
                     </main>
                 }
             }
