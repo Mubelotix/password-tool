@@ -24,8 +24,12 @@
     }
 
     @-moz-document url-prefix() {
+      :root {
+        background-color: white;
+      }
+
       tspan:not(.static_color, .static_color>tspan) {
-        fill: gray;
+        fill: rgb(0,0,0);
       }
     }
   </style>
