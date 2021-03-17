@@ -1,5 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <svg viewBox="0 0 500 670" xmlns="http://www.w3.org/2000/svg" xmlns:bx="https://boxy-svg.com">
+<style>
+    :root {
+      --color-text-primary: #24292e;
+      background-color: #fff;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --color-text-primary: #f0f6fc;
+        background-color: #010409;
+      }
+    }
+  </style>
   <defs>
     <linearGradient id="color-1">
       <title>Variable</title>
