@@ -5,6 +5,11 @@ It allows users to get strong and unique passwords using a master password.
 That's all. You can try [here](https://passwords.mubelotix.dev)\
 Passwords are the result of a cryptographic hash that takes as input the master password and a domain name.
 
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:bx="https://boxy-svg.com">
+<path d="M150 0 L75 200 L225 200 Z"  style="mix-blend-mode: difference; fill: white;">
+</path>
+</svg>
+
 ![Operation schema](./assets/readme_schema.svg)
 
 ## Building
