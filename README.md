@@ -5,10 +5,7 @@ It allows users to get strong and unique passwords using a master password.
 That's all. You can try [here](https://passwords.mubelotix.dev)\
 Passwords are the result of a cryptographic hash that takes as input the master password and a domain name.
 
-<img src="data:image/svg+xml;base64, PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOmJ4PSJodHRwczovL2JveHktc3ZnLmNvbSI+CjxwYXRoIGQ9Ik0xNTAgMCBMNzUgMjAwIEwyMjUgMjAwIFoiICBzdHlsZT0ibWl4LWJsZW5kLW1vZGU6IGRpZmZlcmVuY2U7IGZpbGw6IHdoaXRlOyI+CjwvcGF0aD4KPC9zdmc+"/>
-
-
-![Operation schema](./assets/readme_schema.svg)
+![Operation schema](./assets/test.svg)
 
 ## Building
 

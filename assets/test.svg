@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<svg style="background-color: inherit;" xmlns="http://www.w3.org/2000/svg" xmlns:bx="https://boxy-svg.com">
+  <foreignObject style="background-color: inherit;" width="100%" height="100%">
+		<div style="background-color: inherit;" xmlns="http://www.w3.org/1999/xhtml">
+      <svg style="background-color: inherit;" xmlns="http://www.w3.org/2000/svg" xmlns:bx="https://boxy-svg.com">
+        <path d="M150 0 L75 200 L225 200 Z"  style="mix-blend-mode: difference; fill: white;"></path>
+      </svg>
+		</div>
+	</foreignObject>
+</svg>
