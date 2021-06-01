@@ -1,23 +1,23 @@
 #![recursion_limit = "1024"]
 #![allow(clippy::large_enum_variant)]
 use sha3::{Digest, Sha3_512};
+use wasm_bindgen_futures::spawn_local;
 use std::rc::Rc;
 use wasm_bindgen::JsCast;
 use web_sys::*;
 use yew::prelude::*;
 use yew::services::storage::{Area, StorageService};
+use publicsuffix::{Psl, List};
 
 #[macro_use]
 mod util;
 mod foldable_info;
 mod generation;
 mod message;
-mod psl;
 mod settings;
 use foldable_info::*;
 use generation::*;
 use message::*;
-use psl::*;
 use settings::*;
 use util::*;
 mod keylogger_protection;
@@ -55,8 +55,9 @@ pub enum Page {
     },
     DisplayPasswords {
         master_password: String,
+        psl_checked: bool,
+        domain: String,
         host: String,
-        domain: Domain,
         show_more: bool,
         generated_passwords: [String; 6],
         accessible_password: usize,
@@ -68,6 +69,7 @@ pub struct Model {
     link: Rc<ComponentLink<Self>>,
     settings: Settings,
     settings_open: bool,
+    psl: Option<List>,
     keylogger_protector: KeyloggerProtector,
     page: Page,
 }
@@ -75,10 +77,7 @@ pub struct Model {
 pub enum Msg {
     Next,
     Back,
-    PslResponse {
-        host: String,
-        result: Result<String, &'static str>,
-    },
+    PslUpdate(String),
     InputMasterPassword(String),
     Settings,
     CopyPassword(usize),
@@ -96,12 +95,41 @@ impl Component for Model {
             keylogger_protector.enable();
         }
 
+        let mut psl = None;
+        if let Ok(storage) = StorageService::new(Area::Local) {
+            if let Ok(psl_data) = storage.restore("psl") {
+                if let Ok(psl_parsed) = psl_data.parse()  {
+                    psl = Some(psl_parsed);
+                }
+            } else {
+                let link2 = Rc::clone(&link);
+                if let Some(window) = web_sys::window() {
+                    spawn_local(async move {
+                        use wasm_bindgen_futures::JsFuture;
+                        if let Ok(response) = JsFuture::from(window.fetch_with_str("psl.txt")).await {
+                            let response = Response::from(response);
+                            if response.status() == 200 {
+                                if let Ok(text) = response.text() {
+                                    if let Ok(text) = JsFuture::from(text).await {
+                                        if let Some(text) = text.as_string() {
+                                            link2.send_message(Msg::PslUpdate(text));
+                                        }
+                                    }
+                                };
+                            }
+                        };
+                    });
+                }
+            }
+        }
+
         Self {
             link: Rc::clone(&link),
             page: Page::EnterMasterPassword,
             keylogger_protector,
             settings,
             settings_open: false,
+            psl,
         }
     }
 
@@ -158,13 +186,21 @@ impl Component for Model {
                         return false;
                     }
 
-                    let host: String = if let Ok(url) = Url::new(&url) { url.host() } else { url };
-
-                    let domain = Domain::check(Rc::clone(&self.link), host.clone());
+                    let host = if let Ok(url) = Url::new(&url) { url.host() } else { url };
+                    let mut psl_checked = false;
+                    let mut domain = host.clone();
+                    if let Some(psl) = &self.psl {
+                        if let Some(checked_domain) = psl.domain(domain.as_bytes()) {
+                            if let Ok(checked_domain) = String::from_utf8(checked_domain.as_bytes().to_vec()) {
+                                psl_checked = true;
+                                domain = checked_domain;
+                            }
+                        }
+                    }
 
                     if self.settings.store_hash {
                         let mut storage = StorageService::new(Area::Local).expect("storage unavailable");
-                        let mut hasher = Sha3_512::new();
+                        let mut hasher = Sha3_512::new();   
                         hasher.update(format!("{}password", master_password));
                         let result = hasher.finalize();
                         let hashed_password: String = hex::encode(result[..].to_vec());
@@ -182,8 +218,9 @@ impl Component for Model {
 
                     self.page = Page::DisplayPasswords {
                         master_password: master_password.clone(),
-                        host,
+                        psl_checked,
                         domain,
+                        host,
                         generated_passwords,
                         accessible_password: 0,
                         show_more: false,
@@ -192,16 +229,18 @@ impl Component for Model {
                 }
                 Page::DisplayPasswords {
                     master_password,
-                    host,
                     generated_passwords,
                     accessible_password,
                     domain,
+                    host,
+                    psl_checked,
                     ..
                 } => {
                     self.page = Page::DisplayPasswords {
                         master_password: master_password.clone(),
-                        host: host.clone(),
+                        psl_checked: *psl_checked,
                         domain: domain.clone(),
+                        host: host.clone(),
                         generated_passwords: generated_passwords.clone(),
                         accessible_password: *accessible_password,
                         show_more: true,
@@ -285,35 +324,15 @@ impl Component for Model {
                 true
             }
             Msg::InputMasterPassword(password) => self.keylogger_protector.handle_input(password),
-            Msg::PslResponse { host, result } => {
-                if let Page::DisplayPasswords {
-                    domain,
-                    host: expected_host,
-                    generated_passwords,
-                    master_password,
-                    ..
-                } = &mut self.page
-                {
-                    log!("got answer");
-                    if host == *expected_host {
-                        match result {
-                            Ok(checked_domain) => *domain = Domain::Checked(checked_domain),
-                            Err(e) => domain.set_uncheckable(e),
-                        }
-
-                        *generated_passwords = [
-                            generate_password(&master_password, domain.as_ref(), true, false, true),
-                            generate_password(&master_password, domain.as_ref(), true, false, false),
-                            generate_password(&master_password, domain.as_ref(), true, true, true),
-                            generate_password(&master_password, domain.as_ref(), false, false, true),
-                            generate_password(&master_password, domain.as_ref(), false, false, false),
-                            generate_password(&master_password, domain.as_ref(), false, true, true),
-                        ];
-                    } else {
-                        log!("Host changed...");
+            Msg::PslUpdate(psl_data) => {
+                if let Ok(psl_parsed) = psl_data.parse() {
+                    self.psl = Some(psl_parsed);
+                    if let Ok(mut storage) = StorageService::new(Area::Local) {
+                        storage.store("psl", Ok(psl_data));
                     }
                 }
-                true
+                
+                false
             }
             Msg::Noop => false,
         }
@@ -388,14 +407,21 @@ impl Component for Model {
             }
             Page::DisplayPasswords {
                 domain,
+                psl_checked,
                 show_more: false,
                 ..
             } => {
                 html! {
                     <main>
-                        {domain.render()}
+                        {if !psl_checked {
+                            html! {
+                                <Message level="warning">{"Domain checking failed. Please check the domain manually."}</Message>
+                            }
+                        } else {
+                            html! {}
+                        }}
                         <img id="settings" src="parameters.png" onclick=self.link.callback(|_| Msg::Settings)/>
-                        {"Press the button to copy your password for "}<a href=format!("https://{}", domain.as_ref())>{domain.as_ref()}</a>{"."}<br/>
+                        {"Press the button to copy your password for "}<a href=format!("https://{}", domain)>{domain}</a>{"."}<br/>
                         <br/>
                         <button class="big_button" onclick=self.link.callback(|_| Msg::CopyPassword(0))>{"Copy password"}</button><br/>
                         <br/>

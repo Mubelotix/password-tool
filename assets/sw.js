@@ -9,6 +9,7 @@ self.addEventListener('install', function(event) {
                 '/password_tool.js',
                 '/parameters.png',
                 '/manifest.webmanifest',
+                '/psl.txt',
             ]);
         })
     );
