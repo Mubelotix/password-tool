@@ -92,8 +92,8 @@ impl KeyloggerProtector {
     }
 }
 
-impl Renderable for KeyloggerProtector {
-    fn render(&self) -> Html {
+impl KeyloggerProtector {
+    pub fn render(&self) -> Html {
         match self {
             KeyloggerProtector::Enabled(is_password, _, _, message) => html! {
                 <Message level=if *is_password {"info"} else {"warning"}>

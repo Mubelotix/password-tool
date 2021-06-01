@@ -44,8 +44,8 @@ impl Settings {
     }
 }
 
-impl Renderable for Settings {
-    fn render(&self) -> Html {
+impl Settings {
+    pub fn render(&self) -> Html {
         html! {
             <main>
                 {"Settings:"}<br />

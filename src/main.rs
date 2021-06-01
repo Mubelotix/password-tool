@@ -30,7 +30,7 @@ pub enum MasterPasswordCheck {
     Unchecked,
 }
 
-impl Renderable for MasterPasswordCheck {
+impl MasterPasswordCheck {
     fn render(&self) -> Html {
         match self {
             MasterPasswordCheck::Checked => html! {

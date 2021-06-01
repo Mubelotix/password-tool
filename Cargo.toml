@@ -5,7 +5,7 @@ authors = ["Mubelotix <mubelotix@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-yew = "0.17"
+yew = "0.18"
 sha3 = "0.9"
 hex = "0.4"
 publicsuffix = "2.1"
